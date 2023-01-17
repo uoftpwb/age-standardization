@@ -33,20 +33,18 @@ gallup_main <- gallup_main %>%
 #Finding mean life satisfaction scores for each age group
 gallup_age <- gallup_main %>% 
   group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
-  summarise(MeanLS = mean(Weighted.LS,na.rm=T)) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = MeanLS)
+  summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
 
-#Filling missing age groups with ?????????
-
-
+#Filling missing age groups with LS scores of 0
+gallup_age[is.na(gallup_age)] = 0
 
 #Creating weighted average based on WHO Standard Population
 standard_population <- c(0.114691943, 0.111306703, 0.107379824, 0.103046716,
                          0.096817874, 0.089234936, 0.081787407, 0.072714963,
                          0.061611374, 0.050372376, 0.040081246, 0.029925525,
                          0.020582261, 0.012322275, 0.005958023, 0.002031144,
-                         0.000541638, #0.000067705
-)
+                         0.000541638) #0.000067705) Have to reweigh
 
 countries <- colnames(gallup_age)[-(1)]
 age_standardized_scores <- gallup_age %>%
@@ -58,3 +56,8 @@ age_standardized_scores <- as_tibble(cbind(COUNTRY_IS03 = names(
   age_standardized_scores), t(age_standardized_scores)), 
   .name_repair)
 colnames(age_standardized_scores) <- c("COUNTRY_IS03", "AS_Score")
+
+#Adding ranking column
+age_standardized_scores$V2 <- as.numeric(age_standardized_scores$V2)
+age_standardized_scores$Rank <- rank(-age_standardized_scores$V2)
+
