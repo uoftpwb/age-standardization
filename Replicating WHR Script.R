@@ -15,3 +15,11 @@ WHR_scores <- gallup_main %>%
 
 #Adding ranking column
 WHR_scores$Rank <- rank(-WHR_scores$Weighted_Score)
+
+#TODO: Find Data for Six Factors:
+# 1. gdp - Log GDP per Capita
+# 2. ss - Social Support
+# 3.  - Healthy Life Expentency at Birth
+# 4.  - Freedom to Make Life Choices
+# 5.  - Generosity
+# 6.  - Perceptions of Corruption
