@@ -61,7 +61,7 @@ gcorruption <- gallup_main %>%
             ng=n()) %>% 
   select(COUNTRY_ISO3, gcorruption, n)
 
-corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3") 
+corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3")
   
 
 #Merging six factors into WHR_Scores df
