@@ -17,9 +17,14 @@ WHR_scores <- gallup_main %>%
 #Adding ranking column
 WHR_scores$Rank <- rank(-WHR_scores$Weighted_Score)
 
-#TODO: Find Data for Six Factors:
 # 1. gdp - Log GDP per Capita
-
+gdp <- read.csv("/Users/makototakahara/Downloads/PWB Lab/gdp_per_capita.csv")
+gdp <- gdp %>% 
+  select(Country.Code, X2019, X2020)
+growth <- read.csv(
+  "/Users/makototakahara/Downloads/PWB Lab/econ_growth_2021.csv")
+growth2 <- read.csv(
+  "/Users/makototakahara/Downloads/PWB Lab/growth2.csv")
 
 # 2. support - Social Support
 gallup_main$Weighted.support <- as.numeric(gallup_main$WGT*gallup_main$WP27)
@@ -28,6 +33,7 @@ support <- gallup_main %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(support = sum(Weighted.support,na.rm=T)/sum(WGT, na.rm=T)) %>% 
   select(COUNTRY_ISO3, support)
+WHR_scores$support <- support$support
 
 # 3. life_expectancy - Healthy Life Expectancy at Birth
 
@@ -39,6 +45,7 @@ freedom <- gallup_main %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(freedom = sum(Weighted.freedom,na.rm=T)/sum(WGT, na.rm=T)) %>% 
   select(COUNTRY_ISO3, freedom)
+WHR_scores$freedom <- freedom$freedom
 
 # 5. generosity - Generosity
 
@@ -52,22 +59,24 @@ bcorruption <- gallup_main %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(bcorruption = sum(Weighted.bcorruption,na.rm=T)/sum(WGT, na.rm=T),
             nb=n()) %>% 
-  select(COUNTRY_ISO3, bcorruption, n)
+  select(COUNTRY_ISO3, bcorruption)
 
 gcorruption <- gallup_main %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(gcorruption = sum(Weighted.gcorruption,na.rm=T)/sum(WGT, na.rm=T),
             ng=n()) %>% 
-  select(COUNTRY_ISO3, gcorruption, n)
+  select(COUNTRY_ISO3, gcorruption)
+gcorruption[gcorruption == 0] <- NA
 
-corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3")
-  
-
-#Merging six factors into WHR_Scores dataframe
+corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3") %>% 
+  select(COUNTRY_ISO3, bcorruption, gcorruption)
+WHR_scores$corruption <- rowMeans(corruption[c("bcorruption", "gcorruption")], 
+                                  na.rm=TRUE)
 
 #PLM
-plm(WHR_scores$Weighted_Score ~ 
-      gdp+support+life_expectancy+freedom+generosity+corruption, 
-    data = "WHAT", model = "pooling")
+#plm(WHR_scores$Weighted_Score ~ 
+#      gdp+support+life_expectancy+freedom+generosity+corruption, 
+#    data = "WHAT", model = "pooling")
+
 
