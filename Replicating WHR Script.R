@@ -64,7 +64,7 @@ gcorruption <- gallup_main %>%
 corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3")
   
 
-#Merging six factors into WHR_Scores df
+#Merging six factors into WHR_Scores dataframe
 
 #PLM
 plm(WHR_scores$Weighted_Score ~ 
