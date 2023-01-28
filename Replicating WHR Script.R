@@ -39,7 +39,17 @@ growth2$LOCATION <- countrycode(
 growth2 <- growth2[, c(3, 1, 2)]
 
 growth <- rbind(growth1, growth2)
-growth <- unique(growth[ , c("LOCATION") ] )
+growth <- growth %>% 
+  distinct(Country.Code, .keep_all = TRUE)
+colnames(growth) <- c("Country.Code", "Country", "Value")
+growth$Value <- as.numeric(growth$Value)
+
+#ADJUST FOR POPULATION GROWTH
+
+gdp <- merge(gdp, growth, by = "Country.Code")
+gdp$X2021 <- gdp$X2020 * (1+0.01*gdp$Value)
+
+#TURN INTO LOG GDP
 
 
 # 2. support - Social Support
