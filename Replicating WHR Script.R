@@ -27,8 +27,9 @@ gdp <- gdp %>%
   select(Country.Code, X2019, X2020)
 growth1 <- read.csv(
   "/Users/makototakahara/Downloads/PWB Lab/econ_growth_2021.csv")
-growth1 <- growth %>% 
-  select(Country.Code, Country, Value)
+growth1 <- growth1 %>% 
+  select(LOCATION, Country, Value)
+colnames(growth1) <-  c("Country.Code", "Country", "Value")
 growth2 <- read.csv(
   "/Users/makototakahara/Downloads/PWB Lab/growth2.csv")
 
@@ -69,6 +70,7 @@ gdp <- gdp %>%
 colnames(gdp) <- c("COUNTRY_ISO3", "loggdp")
 WHR_scores <- merge(WHR_scores, gdp, by = "COUNTRY_ISO3")
 
+
 # 2. support - Social Support
 gallup_main$Weighted.support <- as.numeric(gallup_main$WGT*gallup_main$WP27)
 support <- gallup_main %>% 
@@ -94,8 +96,20 @@ WHR_scores <- merge(WHR_scores, freedom, by = "COUNTRY_ISO3")
 
 
 # 5. generosity - Generosity
+gallup_main$Weighted.generosity <- as.numeric(gallup_main$WGT*gallup_main$WP108)
+generosity <- gallup_main %>% 
+  filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
+  group_by(COUNTRY_ISO3) %>% 
+  summarise(generosity = sum(Weighted.generosity,na.rm=T)/sum(WGT, na.rm=T)) %>% 
+  select(COUNTRY_ISO3, generosity)
+generosity$generosity <- as.numeric(generosity$generosity)
+WHR_scores <- merge(WHR_scores, generosity, by = "COUNTRY_ISO3")
 
-
+m1 <- lm(generosity~loggdp, WHR_scores)
+residuals <- resid(m1)
+WHR_scores$generosity_residuals <- residuals
+WHR_scores <- WHR_scores %>% 
+  select(!"generosity")
 
 # 6. corruption - Perceptions of Corruption
 gallup_main$Weighted.bcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP145)
@@ -127,5 +141,6 @@ WHR_scores <- merge(WHR_scores, corruption, by = "COUNTRY_ISO3")
 
 #PLM
 #plm(WHR_scores$Weighted_Score ~ 
-#      gdp+support+life_expectancy+freedom+generosity+corruption, 
-#    data = "WHAT", model = "pooling")
+#      loggdp+support+life_expectancy+freedom+generosity+corruption, 
+#    data = WHR_scores, model = "pooling")
+
