@@ -21,14 +21,14 @@ WHR_scores <- gallup_main %>%
 WHR_scores$Rank <- rank(-WHR_scores$Weighted_Score)
 
 
-# 1. gdp - Log GDP per Capita
+# 1. loggdp - Log GDP per Capita
 gdp <- read.csv("/Users/makototakahara/Downloads/PWB Lab/gdp_per_capita.csv")
 gdp <- gdp %>% 
   select(Country.Code, X2019, X2020)
 growth1 <- read.csv(
   "/Users/makototakahara/Downloads/PWB Lab/econ_growth_2021.csv")
 growth1 <- growth %>% 
-  select(LOCATION, Country, Value)
+  select(Country.Code, Country, Value)
 growth2 <- read.csv(
   "/Users/makototakahara/Downloads/PWB Lab/growth2.csv")
 
@@ -37,6 +37,7 @@ growth2$LOCATION <- countrycode(
   "country.name",
   "iso3c")
 growth2 <- growth2[, c(3, 1, 2)]
+colnames(growth2) <-  c("Country.Code", "Country", "Value")
 
 growth <- rbind(growth1, growth2)
 growth <- growth %>% 
@@ -44,13 +45,29 @@ growth <- growth %>%
 colnames(growth) <- c("Country.Code", "Country", "Value")
 growth$Value <- as.numeric(growth$Value)
 
-#ADJUST FOR POPULATION GROWTH
+popgrowth <- read.csv("/Users/makototakahara/Downloads/PWB Lab/popgrowth.csv")
+popgrowth <- popgrowth %>% 
+  select("Country.Code", "X2020")
+colnames(popgrowth) <- c("Country.Code", "PopGrowth")
+growth <- merge(growth, popgrowth, by = "Country.Code")
+growth$PopGrowth <- as.numeric(growth$PopGrowth)
+growth$AdjustedValue <- NA
+growth$AdjustedValue <- growth$Value - growth$PopGrowth
+growth <- growth %>% 
+  select("Country.Code", "AdjustedValue")
 
 gdp <- merge(gdp, growth, by = "Country.Code")
-gdp$X2021 <- gdp$X2020 * (1+0.01*gdp$Value)
 
-#TURN INTO LOG GDP
-
+gdp$X2021 <- gdp$X2020 * (1+0.01*gdp$AdjustedValue)
+gdp <- gdp %>% 
+  select("Country.Code", "X2019", "X2020", "X2021")
+gdp$average <- rowMeans(gdp[c("X2019", "X2020", "X2021")], 
+                                  na.rm=TRUE)
+gdp$loggdp <- log(gdp$average)
+gdp <- gdp %>% 
+  select("Country.Code", loggdp)
+colnames(gdp) <- c("COUNTRY_ISO3", "loggdp")
+WHR_scores <- merge(WHR_scores, gdp, by = "COUNTRY_ISO3")
 
 # 2. support - Social Support
 gallup_main$Weighted.support <- as.numeric(gallup_main$WGT*gallup_main$WP27)
