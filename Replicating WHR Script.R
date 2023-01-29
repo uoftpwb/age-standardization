@@ -68,6 +68,9 @@ gdp$loggdp <- log(gdp$average)
 gdp <- gdp %>% 
   select("Country.Code", loggdp)
 colnames(gdp) <- c("COUNTRY_ISO3", "loggdp")
+
+#"CYP" "HKG" "MLT" "SGP" "TKM" "TWN" "VEN" "XKX" "XNC" "YEM" NOT IN gdp YET
+
 WHR_scores <- merge(WHR_scores, gdp, by = "COUNTRY_ISO3")
 
 
@@ -82,7 +85,8 @@ WHR_scores <- merge(WHR_scores, support, by = "COUNTRY_ISO3")
 
 
 # 3. life_expectancy - Healthy Life Expectancy at Birth
-
+life_expectancy <- read.csv(
+  "/Users/makototakahara/Downloads/PWB Lab/life_expectancy.csv")
 
 
 # 4. freedom - Freedom to Make Life Choices
