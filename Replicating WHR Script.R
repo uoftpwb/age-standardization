@@ -97,7 +97,7 @@ data <- data %>%
   filter(IndicatorCode == "WHOSIS_000001")
 
 # Reshape the data
-data_long <- reshape(data, direction = "long", idvar = c("isocode"), timevar = "time", varying = c("Period"))
+data_long <- reshape(data, varying = c("Period"))
 
 # Rename variables
 colnames(data_long)[colnames(data_long) == "year"] <- "leWDI"
