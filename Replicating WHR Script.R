@@ -75,8 +75,9 @@ WHR_scores <- merge(WHR_scores, gdp, by = "COUNTRY_ISO3")
 
 # 2. support - Social Support
 gallup_main$Weighted.support <- as.numeric(gallup_main$WGT*gallup_main$WP27)
-support <- gallup_main %>% 
-  filter(YEAR_CALENDAR >= 2005 & YEAR_CALENDAR <= 2021) %>%
+support <- gallup_main %>%
+  filter(!is.na(Weighted.support)) %>% 
+  filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(support = sum(Weighted.support,na.rm=T)/sum(WGT, na.rm=T)) %>% 
   select(COUNTRY_ISO3, support)
@@ -207,6 +208,7 @@ WHR_scores <- merge(WHR_scores, support, by = "COUNTRY_ISO3")
 # 4. freedom - Freedom to Make Life Choices
 gallup_main$Weighted.freedom <- as.numeric(gallup_main$WGT*gallup_main$WP134)
 freedom <- gallup_main %>% 
+  filter(!is.na(Weighted.freedom)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(freedom = sum(Weighted.freedom,na.rm=T)/sum(WGT, na.rm=T)) %>% 
@@ -217,6 +219,7 @@ WHR_scores <- merge(WHR_scores, freedom, by = "COUNTRY_ISO3")
 # 5. generosity - Generosity
 gallup_main$Weighted.generosity <- as.numeric(gallup_main$WGT*gallup_main$WP108)
 generosity <- gallup_main %>% 
+  filter(!is.na(Weighted.generosity)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(generosity = sum(Weighted.generosity,na.rm=T)/sum(WGT, na.rm=T)) %>% 
@@ -235,24 +238,25 @@ gallup_main$Weighted.bcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP145
 gallup_main$Weighted.gcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP146)
 
 bcorruption <- gallup_main %>% 
+  filter(!is.na(Weighted.bcorruption)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(bcorruption = sum(Weighted.bcorruption,na.rm=T)/sum(WGT, na.rm=T),
-            nb=n()) %>% 
-  select(COUNTRY_ISO3, bcorruption)
+            nb=n())
 
 gcorruption <- gallup_main %>% 
+  filter(!is.na(Weighted.gcorruption)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(gcorruption = sum(Weighted.gcorruption,na.rm=T)/sum(WGT, na.rm=T),
-            ng=n()) %>% 
-  select(COUNTRY_ISO3, gcorruption)
-gcorruption[gcorruption == 0] <- NA
+            ng=n()) 
 
-corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3") %>% 
-  select(COUNTRY_ISO3, bcorruption, gcorruption)
-corruption$corruption <- rowMeans(corruption[c("bcorruption", "gcorruption")], 
-                                  na.rm=TRUE)
+corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3", all.x=TRUE) 
+corruption$corruption <- NA
+corruption$corruption <- ((corruption$bcorruption*corruption$nb) + 
+         (corruption$gcorrpution*corruption$ng))/
+  (corruption$nb+corruption$ng)
+
 corruption <- corruption %>% 
   select("COUNTRY_ISO3", "corruption")
 WHR_scores <- merge(WHR_scores, corruption, by = "COUNTRY_ISO3")
