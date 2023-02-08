@@ -83,7 +83,7 @@ support <- gallup_main %>%
 WHR_scores <- merge(WHR_scores, support, by = "COUNTRY_ISO3")
 
 
-# 3. life_expectancy - Healthy Life Expectancy at Birth
+# 3. life_expectancy - Healthy Life Expectancy at Birth TODO
 # data <- read.csv(
 #   "/Users/makototakahara/Downloads/PWB Lab/life_expectancy.csv")
 # 
