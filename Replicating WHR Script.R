@@ -237,25 +237,24 @@ WHR_scores <- WHR_scores %>%
 gallup_main$Weighted.bcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP145)
 gallup_main$Weighted.gcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP146)
 
-bcorruption <- gallup_main %>% 
+biscorruption <- gallup_main %>% 
   filter(!is.na(Weighted.bcorruption)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(bcorruption = sum(Weighted.bcorruption,na.rm=T)/sum(WGT, na.rm=T),
             nb=n())
 
-gcorruption <- gallup_main %>% 
+govcorruption <- gallup_main %>% 
   filter(!is.na(Weighted.gcorruption)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(gcorruption = sum(Weighted.gcorruption,na.rm=T)/sum(WGT, na.rm=T),
             ng=n()) 
 
-corruption <- merge(bcorruption, gcorruption, by="COUNTRY_ISO3", all.x=TRUE) 
-corruption$corruption <- NA
-corruption$corruption <- ((corruption$bcorruption*corruption$nb) + 
-         (corruption$gcorrpution*corruption$ng))/
-  (corruption$nb+corruption$ng)
+corruption <- merge(biscorruption, govcorruption, by="COUNTRY_ISO3", all.x=TRUE) 
+
+corruption$corruption <- ((corruption$bcorruption)*(corruption$nb) + 
+  (corruption$gcorruption)*(corruption$ng))/(corruption$nb+corruption$ng)
 
 corruption <- corruption %>% 
   select("COUNTRY_ISO3", "corruption")
