@@ -242,12 +242,12 @@ gallup_main$Weighted.gcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP146
 
 
 
-# corruption1 <- gallup_main %>% 
+# corruption1 <- gallup_main %>%
 #   filter(!is.na(Weighted.bcorruption),
 #          #!is.na(Weighted.gcorruption)
-#          ) %>% 
+#          ) %>%
 #   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
-#   group_by(COUNTRY_ISO3) %>% 
+#   group_by(COUNTRY_ISO3) %>%
 #   summarise(bcorruption = sum(Weighted.bcorruption,na.rm=T)/sum(WGT, na.rm=T),
 #             gcorruption = sum(Weighted.gcorruption,na.rm=T)/sum(WGT, na.rm=T),
 #             n=n())
@@ -266,12 +266,11 @@ biscorruption <- gallup_main %>%
             nb=n())
 
 govcorruption <- gallup_main %>% 
-  #filter(!is.na(Weighted.gcorruption)) %>% 
+  filter(!is.na(Weighted.gcorruption)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
   group_by(COUNTRY_ISO3) %>% 
   summarise(gcorruption = sum(Weighted.gcorruption,na.rm=T)/sum(WGT, na.rm=T),
             ng=n()) 
-govcorruption[govcorruption$gcorruption == 0, 2:3] <- 0
 
 corruption <- merge(biscorruption, govcorruption, by="COUNTRY_ISO3", all.x=TRUE) 
 
