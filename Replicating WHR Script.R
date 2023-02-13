@@ -237,6 +237,27 @@ WHR_scores <- WHR_scores %>%
 gallup_main$Weighted.bcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP145)
 gallup_main$Weighted.gcorruption <- as.numeric(gallup_main$WGT*gallup_main$WP146)
 
+
+
+
+
+
+# corruption1 <- gallup_main %>%
+#   filter(!is.na(Weighted.bcorruption),
+#          #!is.na(Weighted.gcorruption)
+#          ) %>%
+#   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
+#   group_by(COUNTRY_ISO3) %>%
+#   summarise(bcorruption = sum(Weighted.bcorruption,na.rm=T)/sum(WGT, na.rm=T),
+#             gcorruption = sum(Weighted.gcorruption,na.rm=T)/sum(WGT, na.rm=T),
+#             n=n())
+# corruption1$corruption <- RowMeans()
+
+
+
+
+
+
 biscorruption <- gallup_main %>% 
   filter(!is.na(Weighted.bcorruption)) %>% 
   filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
