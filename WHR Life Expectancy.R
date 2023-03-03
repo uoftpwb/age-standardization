@@ -22,8 +22,17 @@ colnames(data_long) <- c("CountryName", "Sex", "Country_ISO3",
 data_long <- data_long[,c(1, 2, 3, 7, 6, 5, 4)]
 data_long[c("2020", "2021")] <- NA
 
+
+
+
 #Extrapolation
-approxExtrap(
+x <- colnames(data_long)[c(4, 5, 6, 7, 8, 9)]
+y <- data_long %>% 
+  filter(Country_ISO3 == "JPN",
+         Sex == "MLE")
+y <- y[c(4, 5, 6, 7, 8, 9)]
+
+plot(x, y)
 
 
 
