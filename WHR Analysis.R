@@ -96,8 +96,25 @@ WHR_scores[WHR_scores$Country=="Northern Cyprus", "Social.Support"] <-
   round(support_calculated[support_calculated$COUNTRY_ISO3 == "XNC", "support"],
         digits=3)
 
+#Maldives, North Cyprus, Tajikstan social support was calculated from Gallup
+gallup_main$Weighted.freedom <- as.numeric(gallup_main$WGT*gallup_main$WP134)
+freedom_calculated <- gallup_main %>% 
+  filter(!is.na(Weighted.freedom)) %>% 
+  filter(!is.na(Weighted.LS)) %>% 
+  filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
+  group_by(COUNTRY_ISO3) %>% 
+  summarise(freedom = sum(Weighted.freedom,na.rm=T)/sum(WGT, na.rm=T)) %>% 
+  select(COUNTRY_ISO3, freedom)
 
-
+WHR_scores[WHR_scores$Country=="Maldives", "Freedom"] <- 
+  round(freedom_calculated[freedom_calculated$COUNTRY_ISO3 == "MDV", "freedom"], 
+        digits=3)
+WHR_scores[WHR_scores$Country=="Northern Cyprus", "Freedom"] <- 
+  round(freedom_calculated[freedom_calculated$COUNTRY_ISO3 == "XNC", "freedom"],
+        digits=3)
+WHR_scores[WHR_scores$Country=="Tajikstan", "Freedom"] <- 
+  round(freedom_calculated[freedom_calculated$COUNTRY_ISO3 == "TJK", "freedom"],
+        digits=3)
 
 #Perform Regression
 
