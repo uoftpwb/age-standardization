@@ -62,9 +62,40 @@ WHR_scores <- merge(WHR_scores, life_expectancy, by = "Country", all.x=TRUE)
 WHR_scores <- merge(WHR_scores, freedom, by = "Country", all.x=TRUE)
 WHR_scores <- merge(WHR_scores, generosity_df, by = "Country", all.x=TRUE)
 WHR_scores <- merge(WHR_scores, corruption, by = "Country", all.x=TRUE)
+WHR_scores <- merge(WHR_scores, positive_affect, by = "Country", all.x=TRUE)
+WHR_scores <- merge(WHR_scores, negative_affect, by = "Country", all.x=TRUE)
+
+
+#Check missing data
+missing <- WHR_scores[!complete.cases(WHR_scores), ]
 
 
 #Impute missing data
+#For Northern Cyprus GDP, Life Expectancy, Generosity - Use Cyprus Data
+WHR_scores[WHR_scores$Country=="Northern Cyprus", "loggdp"] <- 
+  WHR_scores[WHR_scores$Country=="Cyprus", "loggdp"]
+WHR_scores[WHR_scores$Country=="Northern Cyprus", "Life.Expectancy"] <- 
+  WHR_scores[WHR_scores$Country=="Cyprus", "Life.Expectancy"]
+WHR_scores[WHR_scores$Country=="Northern Cyprus", "Generosity"] <- 
+  WHR_scores[WHR_scores$Country=="Cyprus", "Generosity"]
+
+#Maldives, North Cyprus social support was calculated from Gallup
+gallup_main$Weighted.support <- as.numeric(gallup_main$WGT*gallup_main$WP27)
+support_calculated <- gallup_main %>%
+  filter(!is.na(Weighted.support)) %>% 
+  filter(!is.na(Weighted.LS)) %>% 
+  filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
+  group_by(COUNTRY_ISO3) %>% 
+  summarise(support = sum(Weighted.support,na.rm=T)/sum(WGT, na.rm=T)) %>% 
+  select(COUNTRY_ISO3, support)
+
+WHR_scores[WHR_scores$Country=="Maldives", "Social.Support"] <- 
+  round(support_calculated[support_calculated$COUNTRY_ISO3 == "MDV", "support"], 
+        digits=3)
+WHR_scores[WHR_scores$Country=="Northern Cyprus", "Social.Support"] <- 
+  round(support_calculated[support_calculated$COUNTRY_ISO3 == "XNC", "support"],
+        digits=3)
+
 
 
 
