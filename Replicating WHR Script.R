@@ -71,10 +71,6 @@ gdp$loggdp <- log(gdp$average)
 gdp <- gdp %>%
   select("Country.Code", "loggdp", "X2019", "X2020", "X2021", "AdjustedValue", "average")
 
-
-
-
-
 gdp <- gdp %>%
   select("Country.Code", "loggdp")
 colnames(gdp) <-  c("COUNTRY_ISO3", "loggdp")
@@ -164,8 +160,34 @@ corruption <- corruption %>%
   select("COUNTRY_ISO3", "corruption")
 WHR_scores <- merge(WHR_scores, corruption, by = "COUNTRY_ISO3", all.x=TRUE)
 
+#Positive Affect
+gallup_main$Weighted.positive <- as.numeric(gallup_main$WGT*gallup_main$PosAffect)
+positive <- gallup_main %>%
+  filter(!is.na(Weighted.positive)) %>% 
+  filter(!is.na(Weighted.LS)) %>% 
+  filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
+  group_by(COUNTRY_ISO3) %>% 
+  summarise(positive = sum(Weighted.positive, na.rm=T)/sum(WGT, na.rm=T)) %>% 
+  select(COUNTRY_ISO3, positive)
+
+
+#Negative Affect
+gallup_main$Weighted.negative <- as.numeric(gallup_main$WGT*gallup_main$NegAffect)
+negative <- gallup_main %>%
+  filter(!is.na(Weighted.negative)) %>% 
+  filter(!is.na(Weighted.LS)) %>% 
+  filter(YEAR_CALENDAR >= 2019 & YEAR_CALENDAR <= 2021) %>%
+  group_by(COUNTRY_ISO3) %>% 
+  summarise(negative = sum(Weighted.negative,na.rm=T)/sum(WGT, na.rm=T)) %>% 
+  select(COUNTRY_ISO3, negative)
+
 #PLM
 #plm(WHR_scores$Weighted_Score ~ 
 #      loggdp+support+life_expectancy+freedom+generosity+corruption, 
 #    data = WHR_scores, model = "pooling")
 
+
+t <- gallup_main %>% 
+  filter(COUNTRY_ISO3 == "TJK",
+         #!is.na(WP134),
+         YEAR_CALENDAR >= 2019)
