@@ -1,4 +1,6 @@
 library(tidyverse)
+library(plm)
+library(countrycode)
 
 #Read Data
 # gallup_main <- read.csv(
@@ -142,17 +144,6 @@ summarized_WHR <- WHR_data %>% filter(year >= 2019, year <= 2021)%>%
             Generosity = mean(Generosity, na.rm = TRUE),
             Perceptions.of.corruption = mean(Perceptions.of.corruption, na.rm = TRUE))
 
-#Impute missing data
-#For Northern Cyprus GDP, Life Expectancy, Generosity - Use Cyprus Data
-summarized_WHR[summarized_WHR$Country.name=="North Cyprus", "Log.GDP.per.capita"] <-
-  summarized_WHR[summarized_WHR$Country.name=="Cyprus", "Log.GDP.per.capita"]
-summarized_WHR[summarized_WHR$Country.name=="North Cyprus", "Healthy.life.expectancy.at.birth"] <-
-  summarized_WHR[summarized_WHR$Country.name=="Cyprus", "Healthy.life.expectancy.at.birth"]
-summarized_WHR[summarized_WHR$Country.name=="North Cyprus", "Generosity"] <-
-  summarized_WHR[summarized_WHR$Country.name=="Cyprus", "Generosity"]
-
-#NEED MORE IMPUTATIONS? ASK HAIFANG MAYBE
-
 #Create Dystopia, Subtract to find variance
 df <- data.frame(Country.name="Dystopia", Life.Ladder=NA, Log.GDP.per.capita=NA, 
                  Social.support=NA, Healthy.life.expectancy.at.birth=NA, 
@@ -172,6 +163,51 @@ summarized_WHR[summarized_WHR$Country.name=="Dystopia", "Generosity"] <-
   min(summarized_WHR$Generosity, na.rm = TRUE)
 summarized_WHR[summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"] <-
   max(summarized_WHR$Perceptions.of.corruption, na.rm = TRUE)
+
+
+#Impute missing data
+#For Northern Cyprus GDP, Life Expectancy, Generosity - Use Cyprus Data
+summarized_WHR[summarized_WHR$Country.name=="North Cyprus", "Log.GDP.per.capita"] <-
+  summarized_WHR[summarized_WHR$Country.name=="Cyprus", "Log.GDP.per.capita"]
+summarized_WHR[summarized_WHR$Country.name=="North Cyprus", "Healthy.life.expectancy.at.birth"] <-
+  summarized_WHR[summarized_WHR$Country.name=="Cyprus", "Healthy.life.expectancy.at.birth"]
+summarized_WHR[summarized_WHR$Country.name=="North Cyprus", "Generosity"] <-
+  summarized_WHR[summarized_WHR$Country.name=="Cyprus", "Generosity"]
+
+#For other missing values, calculate from WHR
+summarized_WHR[summarized_WHR$Country.name=="Kosovo", "Healthy.life.expectancy.at.birth"] <-
+  (0.569)/(0.02884543) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+summarized_WHR[summarized_WHR$Country.name=="Hong Kong S.A.R. of China", "Healthy.life.expectancy.at.birth"] <-
+  (0.942)/(0.02884543) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+summarized_WHR[summarized_WHR$Country.name=="Palestinian Territories", "Healthy.life.expectancy.at.birth"] <-
+  (0.521)/(0.02884543) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+summarized_WHR[summarized_WHR$Country.name=="Taiwan Province of China", "Healthy.life.expectancy.at.birth"] <-
+  (0.733)/(0.02884543) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+summarized_WHR[summarized_WHR$Country.name=="Tajikistan", "Freedom.to.make.life.choices"] <-
+  (0.572)/(1.305307) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Freedom.to.make.life.choices"])
+summarized_WHR[summarized_WHR$Country.name=="Saudi Arabia", "Perceptions.of.corruption"] <-
+  (0.180)/(-0.7041473) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+summarized_WHR[summarized_WHR$Country.name=="Kuwait", "Perceptions.of.corruption"] <-
+  (0.147)/(-0.7041473) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+summarized_WHR[summarized_WHR$Country.name=="China", "Perceptions.of.corruption"] <-
+  (0.142)/(-0.7041473) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+summarized_WHR[summarized_WHR$Country.name=="Bahrain", "Perceptions.of.corruption"] <-
+  (0.155)/(-0.7041473) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+summarized_WHR[summarized_WHR$Country.name=="United Arab Emirates", "Perceptions.of.corruption"] <-
+  (0.250)/(-0.7041473) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+summarized_WHR[summarized_WHR$Country.name=="Turkmenistan", "Perceptions.of.corruption"] <-
+  (0.032)/(-0.7041473) + as.numeric(summarized_WHR[
+    summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
 
 
 value.minus.dystopia <- summarized_WHR[1:146, 3:8]- summarized_WHR[rep(147, 146), 3:8]
@@ -209,11 +245,6 @@ contributions <- cbind(contributions, value_minus_dystopia[7] * coef(summary(reg
 contributions$sum <- apply(contributions[,-1], 1, sum) 
 contributions <- cbind(contributions, WHR_score = summarized_WHR[1:146,]$Life.Ladder)
 contributions$residual <- contributions$WHR_score - contributions$sum
-
-
-#missing <- contributions[!complete.cases(contributions), ]
-
-
 
 
 #AGE STANDARDIZED
@@ -256,9 +287,10 @@ age_standardized_scores_wide <- gallup_age  %>%
 age_standardized_scores <- gather(age_standardized_scores_wide, COUNTRY_ISO3, AS.LS, AFG:ZWE)
 colnames(age_standardized_scores) <- c("year", "COUNTRY_ISO3", "AS.LS", "Country.name")
 
+
 #Merging WHR and Standardized Data
 WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
-WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XXK"
+WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
 WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Somaliland region"] <- "XSR" #temp
 Standardized_WHR <- merge(WHR_data, age_standardized_scores, by=c("year","COUNTRY_ISO3"))
 
@@ -274,6 +306,73 @@ standardized_summarized_WHR <- Standardized_WHR %>% filter(year >= 2019, year <=
             Freedom.to.make.life.choices = mean(Freedom.to.make.life.choices, na.rm = TRUE),
             Generosity = mean(Generosity, na.rm = TRUE),
             Perceptions.of.corruption = mean(Perceptions.of.corruption, na.rm = TRUE))
+
+
+df <- data.frame(Country.name="Dystopia", AS.LS=NA, Log.GDP.per.capita=NA, 
+                 Social.support=NA, Healthy.life.expectancy.at.birth=NA, 
+                 Freedom.to.make.life.choices=NA, Generosity=NA, 
+                 Perceptions.of.corruption=NA)
+standardized_summarized_WHR <- rbind(standardized_summarized_WHR, df)
+
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Dystopia", "Log.GDP.per.capita"] <-
+  min(standardized_summarized_WHR$Log.GDP.per.capita, na.rm = TRUE)
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Dystopia", "Social.support"] <-
+  min(standardized_summarized_WHR$Social.support, na.rm = TRUE)
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"] <-
+  min(standardized_summarized_WHR$Healthy.life.expectancy.at.birth, na.rm = TRUE)
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Dystopia", "Freedom.to.make.life.choices"] <-
+  min(standardized_summarized_WHR$Freedom.to.make.life.choices, na.rm = TRUE)
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Dystopia", "Generosity"] <-
+  min(standardized_summarized_WHR$Generosity, na.rm = TRUE)
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"] <-
+  max(standardized_summarized_WHR$Perceptions.of.corruption, na.rm = TRUE)
+
+
+#Impute missing data
+#For Northern Cyprus GDP, Life Expectancy, Generosity - Use Cyprus Data
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="North Cyprus", "Log.GDP.per.capita"] <-
+  standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Cyprus", "Log.GDP.per.capita"]
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="North Cyprus", "Healthy.life.expectancy.at.birth"] <-
+  standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Cyprus", "Healthy.life.expectancy.at.birth"]
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="North Cyprus", "Generosity"] <-
+  standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Cyprus", "Generosity"]
+
+#For other missing values, calculate from WHR
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Kosovo", "Healthy.life.expectancy.at.birth"] <-
+  (0.569)/(coef(summary(reg1))[3]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Hong Kong S.A.R. of China", "Healthy.life.expectancy.at.birth"] <-
+  (0.942)/(coef(summary(reg1))[3]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Palestinian Territories", "Healthy.life.expectancy.at.birth"] <-
+  (0.521)/(coef(summary(reg1))[3]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Taiwan Province of China", "Healthy.life.expectancy.at.birth"] <-
+  (0.733)/(coef(summary(reg1))[3]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Tajikistan", "Freedom.to.make.life.choices"] <-
+  (0.572)/(coef(summary(reg1))[4]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Freedom.to.make.life.choices"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Saudi Arabia", "Perceptions.of.corruption"] <-
+  (0.180)/(coef(summary(reg1))[6]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Kuwait", "Perceptions.of.corruption"] <-
+  (0.147)/(coef(summary(reg1))[6]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="China", "Perceptions.of.corruption"] <-
+  (0.142)/(coef(summary(reg1))[6]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Bahrain", "Perceptions.of.corruption"] <-
+  (0.155)/(coef(summary(reg1))[6]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="United Arab Emirates", "Perceptions.of.corruption"] <-
+  (0.250)/(coef(summary(reg1))[6]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+standardized_summarized_WHR[standardized_summarized_WHR$Country.name=="Turkmenistan", "Perceptions.of.corruption"] <-
+  (0.032)/(coef(summary(reg1))[6]) + as.numeric(standardized_summarized_WHR[
+    standardized_summarized_WHR$Country.name=="Dystopia", "Perceptions.of.corruption"])
+
+
 
 Standardized_WHR_data_for_regression <- Standardized_WHR %>%
   filter(!is.na(AS.LS),
@@ -298,5 +397,23 @@ standardized_contributions <- cbind(standardized_contributions, value_minus_dyst
 standardized_contributions <- cbind(standardized_contributions, value_minus_dystopia[7] * coef(summary(reg2))[6,1])
 
 standardized_contributions$sum <- apply(standardized_contributions[,-1], 1, sum) 
-standardized_contributions <- cbind(standardized_contributions, ASLS_score = standardized_summarized_WHR[1:146,]$AS.LS)
-standardized_contributions$residual <- standardized_contributions$ASLS_score - standardized_contributions$sum
+ASLS <- standardized_summarized_WHR[1:2]
+standardized_contributions <- merge(standardized_contributions, ASLS, 
+                                    by.x="standardized_contributions",
+                                    by.y="Country.name")
+
+#Manually impute missing data for Libya, Saudi Arabia
+standardized_contributions[standardized_contributions$standardized_contributions=="Libya", "AS.LS"] <-
+  5.069252
+standardized_contributions[standardized_contributions$standardized_contributions=="Saudi Arabia", "AS.LS"] <-
+  6.217615
+
+
+standardized_contributions$residual <- standardized_contributions$AS.LS - standardized_contributions$sum
+standardized_contributions1 <- standardized_contributions[, c(1, 9, 2, 3, 4, 5, 6, 7, 10)]
+names(standardized_contributions1)[names(standardized_contributions1) == 'standardized_contributions'] <- 
+  'Country'
+standardized_contributions1$Rank <- rank(-standardized_contributions1$AS.LS)
+
+write.csv(standardized_contributions1,
+          file="/Users/makototakahara/Downloads/Age_Standardized_Scores.csv")
