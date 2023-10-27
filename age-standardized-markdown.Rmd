@@ -19,7 +19,7 @@ WHR_data <- read.csv("/Users/makototakahara/Downloads/WHR2023Table.csv")
 
 WHR_summary <- WHR_data %>% filter(year >= 2020, year <= 2022)%>% 
   group_by(Country.name) %>% 
-  summarize(Life.Ladder = weighted.mean(Life.Ladder,nna.rm = TRUE),
+  summarize(Life.Ladder = weighted.mean(Life.Ladder, n),
             Log.GDP.per.capita = mean(Log.GDP.per.capita, na.rm = TRUE),
             Social.support = mean(Social.support, na.rm = TRUE),
             Healthy.life.expectancy.at.birth = mean(Healthy.life.expectancy.at.birth, na.rm = TRUE),
