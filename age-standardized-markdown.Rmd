@@ -12,6 +12,7 @@ library(countrycode)
 library(ggalluvial)
 ```
 
+**Replicating World Happiness Report 2023, Chapter 2**
 Reading WHR Data
 ```{r}
 WHR_data <- read.csv("/Users/makototakahara/Downloads/WHR2023Table.csv")
@@ -44,6 +45,31 @@ WHR_regression <- plm(Life.Ladder ~ Log.GDP.per.capita+Social.support+
                       index = c("year","Country.name"), model="within")
 ```
 
+Calculating Venezula's Log GDP per capita
+```{r}
+gdp_contributions <- c(1.888380408, 1.949405551, 1.925507665, 1.833397985, 1.942273855, 1.920950174, 1.994439602, 2.021803141, 2.199664354, 1.841704249, 1.926718116, 1.898795009, 1.881438851, 2.152112246, 1.980279803, 1.919438958, 1.906878233, 1.823468804, 1.856903434, 1.807981849, 1.855644822, 1.815317154, 1.586957693, 1.725929260, 2.167941332, 2.015041590, 1.617422104, 1.731086135, 1.860922694, 1.798477411, 1.798105359, 1.831728816, 1.374470234, 1.645203710, 1.550388217, 1.841345787, 1.713736892, 1.766774416, 1.108565807, 1.737142801, 1.882560015, 1.287179708, 1.663887262, 1.551958442, 1.823535442, 1.825132132, 1.726533294, 1.454480886, 1.277642131, 1.754487276, 1.589547515, 1.114858866, 1.227176905, 1.664970160, 1.758063197, 1.852753997, 1.707674265, 1.588978410, 1.515194416, 1.379249096, 1.061276436, 1.424565315, 1.510386109, 1.348590732, 1.428491592, 1.537114263, 1.304714680, 1.240158796, 1.679553747, 1.466522813, 1.455285072, 1.536397338, 1.342591405, 1.389684558, 1.238053203, 1.635417581, 0.978851676, 1.466145873, 0.971865714, 1.353351712, 1.950940251, 1.449203372, 1.383815885, 1.416947603, 0.921178162, 1.497870803, 1.232199073, 1.477461338, 0.844172418, 1.358194232, 1.093752742, 1.438447475, 1.064864993, 0.964770198, 0.570097387, 1.280983448, 1.236021280, 1.464571595, 0.942726910, 1.098963261, 0.767502248, 1.288983583, 1.714365840, 1.100695729, 1.080818176, 0.561017454, 1.333035707, 1.051386952, 1.421779513, 0.785096049, 0.622039676, 1.025035024, 0.924076915, 1.031916738, 1.132664084, 0.760724187, 0.763360739, 1.377242088, 0.769851625, 1.292441964, 0.793330133, 0.627642870, 1.159242749, 0.632469475, 0.913520396, 0.835894883, 0.913785815, 0.636526823, 1.471394062, 0.530779243, 0.758278608, 0.669698656, 1.416998625, 0.644599795)
+
+gdp_values <- WHR_summary %>% arrange(desc(Life.Ladder)) %>% 
+  select(Log.GDP.per.capita) %>% 
+  drop_na()
+gdp_values <- pull(gdp_values, Log.GDP.per.capita)
+
+
+venezuela_gdp_values_calculator <- function(vec1, vec2){
+  n <- length(vec1)
+  bruh <- c()
+  for (i in 1:n){
+    lol <- vec2[i] - (vec1[i]/0.3586569)
+    bruh <- c(bruh, lol)
+  }
+  return(bruh)
+}
+
+venezuela_gdp_values <- venezuela_gdp_values_calculator(gdp_contributions, gdp_values)
+Venezuela_GDP <- mean(venezuela_gdp_values)
+```
+
+
 Creating Dystopia
 ```{r}
 WHR_summary <- rbind(WHR_summary, data.frame(Country.name="Dystopia", Life.Ladder=NA, Log.GDP.per.capita=NA, 
@@ -52,7 +78,7 @@ WHR_summary <- rbind(WHR_summary, data.frame(Country.name="Dystopia", Life.Ladde
                                              Perceptions.of.corruption=NA))
 
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"] <-
-  10.792000-(1.88838/0.3586569) 
+  Venezuela_GDP 
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Social.support"] <-
   min(WHR_summary$Social.support, na.rm = TRUE)
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"] <-
@@ -149,5 +175,10 @@ WHR_ranking$residual <- WHR_ranking$WHR_score - WHR_ranking$sum
 WHR_ranking <- WHR_ranking %>% 
   select(!sum)
 WHR_ranking <- WHR_ranking[,c(1, 8, 2, 3, 4, 5, 6, 7, 9)]
+```
+
+**Age-standardized Well-being Rankings**
+```{r}
+
 ```
 
