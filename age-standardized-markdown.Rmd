@@ -6,24 +6,148 @@ date: "2023-10-27"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plm)
+library(countrycode)
+library(ggalluvial)
 ```
 
-## R Markdown
+Reading WHR Data
+```{r}
+WHR_data <- read.csv("/Users/makototakahara/Downloads/WHR2023Table.csv")
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+WHR_summary <- WHR_data %>% filter(year >= 2020, year <= 2022)%>% 
+  group_by(Country.name) %>% 
+  summarize(Life.Ladder = mean(Life.Ladder, na.rm = TRUE),
+            Log.GDP.per.capita = mean(Log.GDP.per.capita, na.rm = TRUE),
+            Social.support = mean(Social.support, na.rm = TRUE),
+            Healthy.life.expectancy.at.birth = mean(Healthy.life.expectancy.at.birth, na.rm = TRUE),
+            Freedom.to.make.life.choices = mean(Freedom.to.make.life.choices, na.rm = TRUE),
+            Generosity = mean(Generosity, na.rm = TRUE),
+            Perceptions.of.corruption = mean(Perceptions.of.corruption, na.rm = TRUE))
 ```
 
-## Including Plots
+Regression of Life Ladder to 6 predictors
+```{r}
+regression_data <- WHR_data %>%
+  filter(!is.na(Life.Ladder),
+         !is.na(Log.GDP.per.capita),
+         !is.na(Social.support),
+         !is.na(Healthy.life.expectancy.at.birth),
+         !is.na(Freedom.to.make.life.choices),
+         !is.na(Generosity),
+         !is.na(Perceptions.of.corruption))
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+WHR_regression <- plm(Life.Ladder ~ Log.GDP.per.capita+Social.support+
+                        Healthy.life.expectancy.at.birth+Freedom.to.make.life.choices+
+                        Generosity+Perceptions.of.corruption, data = regression_data,
+                      index = c("year","Country.name"), model="within")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Creating Dystopia
+```{r}
+WHR_summary <- rbind(WHR_summary, data.frame(Country.name="Dystopia", Life.Ladder=NA, Log.GDP.per.capita=NA, 
+                                             Social.support=NA, Healthy.life.expectancy.at.birth=NA, 
+                                             Freedom.to.make.life.choices=NA, Generosity=NA, 
+                                             Perceptions.of.corruption=NA))
+
+WHR_summary[WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"] <-
+  10.792000-(1.88838/0.3586569) 
+WHR_summary[WHR_summary$Country.name=="Dystopia", "Social.support"] <-
+  min(WHR_summary$Social.support, na.rm = TRUE)
+WHR_summary[WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"] <-
+  min(WHR_summary$Healthy.life.expectancy.at.birth, na.rm = TRUE)
+WHR_summary[WHR_summary$Country.name=="Dystopia", "Freedom.to.make.life.choices"] <-
+  min(WHR_summary$Freedom.to.make.life.choices, na.rm = TRUE)
+WHR_summary[WHR_summary$Country.name=="Dystopia", "Generosity"] <-
+  min(WHR_summary$Generosity, na.rm = TRUE)
+WHR_summary[WHR_summary$Country.name=="Dystopia", "Perceptions.of.corruption"] <-
+  max(WHR_summary$Perceptions.of.corruption, na.rm = TRUE)
+```
+
+Impute missing data
+```{r}
+WHR_summary[WHR_summary$Country.name=="State of Palestine", "Log.GDP.per.capita"] <- 
+  (1.144)/(summary(WHR_regression)$coefficients["Log.GDP.per.capita", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"])
+
+WHR_summary[WHR_summary$Country.name=="Taiwan Province of China", "Log.GDP.per.capita"] <-
+  (1.897)/(summary(WHR_regression)$coefficients["Log.GDP.per.capita", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"])
+
+WHR_summary[WHR_summary$Country.name=="Venezuela", "Log.GDP.per.capita"] <-
+  (0)/(summary(WHR_regression)$coefficients["Log.GDP.per.capita", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"])
+
+WHR_summary[WHR_summary$Country.name=="Hong Kong S.A.R. of China", "Healthy.life.expectancy.at.birth"] <-
+  (0.702)/(summary(WHR_regression)$coefficients["Healthy.life.expectancy.at.birth", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+
+WHR_summary[WHR_summary$Country.name=="Kosovo", "Healthy.life.expectancy.at.birth"] <-
+  (0.372)/(summary(WHR_regression)$coefficients["Healthy.life.expectancy.at.birth", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+
+WHR_summary[WHR_summary$Country.name=="State of Palestine", "Healthy.life.expectancy.at.birth"] <-
+  (0.292)/(summary(WHR_regression)$coefficients["Healthy.life.expectancy.at.birth", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+
+WHR_summary[WHR_summary$Country.name=="Taiwan Province of China", "Healthy.life.expectancy.at.birth"] <-
+  (0.492)/(summary(WHR_regression)$coefficients["Healthy.life.expectancy.at.birth", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"])
+
+WHR_summary[WHR_summary$Country.name=="Tajikistan", "Freedom.to.make.life.choices"] <-
+  (0.599)/(summary(WHR_regression)$coefficients["Freedom.to.make.life.choices", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Freedom.to.make.life.choices"])
+
+WHR_summary[WHR_summary$Country.name=="Venezuela", "Generosity"] <-
+  (0.205)/(summary(WHR_regression)$coefficients["Generosity", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Generosity"])
+
+WHR_summary[WHR_summary$Country.name=="State of Palestine", "Generosity"] <-
+  (0.065)/(summary(WHR_regression)$coefficients["Generosity", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Generosity"])
+
+WHR_summary[WHR_summary$Country.name=="Taiwan Province of China", "Generosity"] <-
+  (0.067)/(summary(WHR_regression)$coefficients["Generosity", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Generosity"])
+
+WHR_summary[WHR_summary$Country.name=="Saudi Arabia", "Perceptions.of.corruption"] <-
+  (0.170)/(summary(WHR_regression)$coefficients["Perceptions.of.corruption", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Perceptions.of.corruption"])
+
+WHR_summary[WHR_summary$Country.name=="Bahrain", "Perceptions.of.corruption"] <-
+  (0.138)/(summary(WHR_regression)$coefficients["Perceptions.of.corruption", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Perceptions.of.corruption"])
+
+WHR_summary[WHR_summary$Country.name=="China", "Perceptions.of.corruption"] <-
+  (0.145)/(summary(WHR_regression)$coefficients["Perceptions.of.corruption", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Perceptions.of.corruption"])
+
+WHR_summary[WHR_summary$Country.name=="United Arab Emirates", "Perceptions.of.corruption"] <-
+  (0.247)/(summary(WHR_regression)$coefficients["Perceptions.of.corruption", "Estimate"]) + as.numeric(WHR_summary[
+    WHR_summary$Country.name=="Dystopia", "Perceptions.of.corruption"])
+```
+
+Construct WHR Ranking
+```{r}
+distance_from_dystopia <- cbind(WHR_summary %>% 
+                                  select(Country.name) %>% 
+                                  filter(Country.name != "Dystopia"),
+                                (WHR_summary[1:137, 3:8] - WHR_summary[rep(138, 137), 3:8]))
+
+WHR_ranking <- distance_from_dystopia$Country.name
+WHR_ranking <- cbind(WHR_ranking, distance_from_dystopia[2] * coef(summary(WHR_regression))[1,1])
+WHR_ranking <- cbind(WHR_ranking, distance_from_dystopia[3] * coef(summary(WHR_regression))[2,1])
+WHR_ranking <- cbind(WHR_ranking, distance_from_dystopia[4] * coef(summary(WHR_regression))[3,1])
+WHR_ranking <- cbind(WHR_ranking, distance_from_dystopia[5] * coef(summary(WHR_regression))[4,1])
+WHR_ranking <- cbind(WHR_ranking, distance_from_dystopia[6] * coef(summary(WHR_regression))[5,1])
+WHR_ranking <- cbind(WHR_ranking, distance_from_dystopia[7] * coef(summary(WHR_regression))[6,1])
+WHR_ranking$sum <- apply(WHR_ranking[,-1], 1, sum) 
+
+WHR_ranking <- data.frame(cbind(WHR_ranking, WHR_score = WHR_summary[1:137,]$Life.Ladder))
+WHR_ranking$residual <- WHR_ranking$WHR_score - WHR_ranking$sum
+WHR_ranking <- WHR_ranking %>% 
+  select(!sum)
+WHR_ranking <- WHR_ranking[,c(1, 8, 2, 3, 4, 5, 6, 7, 9)]
+```
+
