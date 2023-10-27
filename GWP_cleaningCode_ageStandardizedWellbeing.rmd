@@ -1,0 +1,96 @@
+---
+title: "GallupDataPreparation"
+author: "Kenith"
+date: '2023-10-27'
+---
+
+## 0. Subset the Gallup raw data
+
+The version of the Gallup raw data used in this study is "The_Gallup_021723.dat". This data was released to the [UofT Map and Data Library](https://mdl.library.utoronto.ca/collections/numeric-data/gallup) on February 14, 2023.
+
+Since the raw data file is relatively large (14Gb), we used a separate environment to run the following code, which subsets the variables that we needed.
+
+```{r gwp-subset, eval=FALSE}
+# This code will not be run
+# Import the data file "The_Gallup_021723.dat"
+gallupRaw <- rio::import("The_Gallup_021723.dat")
+
+# Create a character vector of the names of the variables we're interested in
+varRequired <- c(
+  "WPID", "WGT", "COUNTRYNEW", "COUNTRY_ISO3",
+  "YEAR_CALENDAR", "WP4", "YEAR_WAVE",
+  "WP16", "WP1220"
+)
+
+# Subset gallupRaw to include only the variables specified in varRequired
+gallupSubset <- gallupRaw %>% 
+    select(all_of(varRequired)) %>% 
+    filter(YEAR_WAVE >= 2019)
+
+# Save the gallupSubset data frame to a .rds file for later use
+saveRDS(gallupSubset, "(231027)GWP_RawSubset_ageStandardizedWellbeing.rds")
+```
+
+The environment used for the ABOVE code had the following specifications:
+R version 4.0.3 (2020-10-10)
+Release Name: Bunny-Wunnies Freak Out
+
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+Running Under: CentOS Linux 7 (Core)
+
+Locale: LC_CTYPE=en_CA.UTF-8;LC_NUMERIC=C;LC_TIME=en_CA.UTF-8;LC_COLLATE=en_CA.UTF-8;LC_MONETARY=en_CA.UTF-8;LC_MESSAGES=en_CA.UTF-8;LC_PAPER=en_CA.UTF-8;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=en_CA.UTF-8;LC_IDENTIFICATION=C
+
+Base Packages: stats, graphics, grDevices, utils, datasets, methods, base
+
+Other Packages: dplyr_1.0.6
+
+Loaded via a namespace (and not attached): zip_2.2.0, Rcpp_1.0.6, cellranger_1.1.0, pillar_1.6.1, compiler_4.0.3, forcats_0.5.1, base64enc_0.1-3, tools_4.0.3, bit_4.0.4, digest_0.6.27, uuid_0.1-4, jsonlite_1.7.2, evaluate_0.14, lifecycle_1.0.0, tibble_3.1.2, pkgconfig_2.0.3, rlang_0.4.11, openxlsx_4.2.3, IRdisplay_1.0, IRkernel_1.2, curl_4.3.1, haven_2.4.1, rio_0.5.26, repr_1.1.3, generics_0.1.0, vctrs_0.3.8, hms_1.1.0, bit64_4.0.5, tidyselect_1.1.1, data.table_1.14.0, R6_2.5.0, fansi_0.5.0, readxl_1.3.1, foreign_0.8-80, pbdZMQ_0.3-5, purrr_0.3.4, magrittr_2.0.1, ellipsis_0.3.2, htmltools_0.5.1.1, utf8_1.2.1, stringi_1.6.2, crayon_1.4.1
+
+## 1. Clean the Subset Gallup Data
+
+### 1.1 Import the subset raw data
+
+Once we had the subset of the Gallup data, we imported the data and loaded the necessary packages:
+
+```{r set-up}
+# Load "dplyr"
+library(dplyr)
+
+# Read the RDS file
+gallupSubset <- readRDS("(231027)GWP_RawSubset_ageStandardizedWellbeing.rds")
+```
+
+### 1.2 Create `YEAR_INTERVIEW` 
+
+The existing 'YEAR_CALENDAR' and 'YEAR_WAVE' variables may not accurately represent the year a participant was interviewed. 'YEAR_CALENDAR' is based on the last interview day for all participants, while 'YEAR_WAVE' refers to the wave year. We extracted the interview year from 'WP4:Interview Date' and created a 'YEAR_INTERVIEW' variable. If the 'Interview Date' was missing, we used 'YEAR_CALENDAR' as 'YEAR_INTERVIEW'.
+
+```{r creating-YEAR_INTERVIEW}
+gallup <- gallupSubset %>%
+  # Convert WP4 to a date
+  mutate(WP4 = as.Date(WP4, "%m/%d/%Y")) %>%
+  # Create YEAR_INTERVIEW variable
+  mutate(YEAR_INTERVIEW =
+           ifelse(is.na(WP4), YEAR_CALENDAR, format(WP4, format = "%Y")))
+```
+
+### 1.3 Clean 'Don't Know' and 'Refused' Responses
+
+Gallup coded some responses as 'Don't Know' or 'Refused', which would not be meaningful for our analysis. We converted these responses to NA using the values found in the [WORLD POLL REFERENCE TOOL](https://wpr.gallup.com/).
+
+```{r converting-responses-to-NA}
+# Convert certain values to NA
+gallup <- gallup %>%
+  mutate(WP16 = ifelse(WP16 %in% c(98, 99), NA, WP16),
+         WP1220 = ifelse(WP1220 %in% c(100), NA, WP1220))
+```
+
+
+
+The object `gallup` is now a cleaned subset of the Gallup data.
+
+We save the Gallup cleaned data to a .rds file for later use
+
+```{r exporting-gallup-cleaned}
+saveRDS(gallup, "(231027)GWP_cleaned_ageStandardizedWellbeing.rds")
+```
