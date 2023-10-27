@@ -19,7 +19,7 @@ WHR_data <- read.csv("/Users/makototakahara/Downloads/WHR2023Table.csv")
 
 WHR_summary <- WHR_data %>% filter(year >= 2020, year <= 2022)%>% 
   group_by(Country.name) %>% 
-  summarize(Life.Ladder = mean(Life.Ladder, na.rm = TRUE),
+  summarize(Life.Ladder = weighted.mean(Life.Ladder,nna.rm = TRUE),
             Log.GDP.per.capita = mean(Log.GDP.per.capita, na.rm = TRUE),
             Social.support = mean(Social.support, na.rm = TRUE),
             Healthy.life.expectancy.at.birth = mean(Healthy.life.expectancy.at.birth, na.rm = TRUE),
@@ -66,7 +66,7 @@ venezuela_gdp_values_calculator <- function(vec1, vec2){
 }
 
 venezuela_gdp_values <- venezuela_gdp_values_calculator(gdp_contributions, gdp_values)
-Venezuela_GDP <- mean(venezuela_gdp_values)
+venezuela_GDP <- mean(venezuela_gdp_values)
 ```
 
 
@@ -78,7 +78,7 @@ WHR_summary <- rbind(WHR_summary, data.frame(Country.name="Dystopia", Life.Ladde
                                              Perceptions.of.corruption=NA))
 
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"] <-
-  Venezuela_GDP 
+  venezuela_GDP 
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Social.support"] <-
   min(WHR_summary$Social.support, na.rm = TRUE)
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"] <-
@@ -172,13 +172,90 @@ WHR_ranking$sum <- apply(WHR_ranking[,-1], 1, sum)
 
 WHR_ranking <- data.frame(cbind(WHR_ranking, WHR_score = WHR_summary[1:137,]$Life.Ladder))
 WHR_ranking$residual <- WHR_ranking$WHR_score - WHR_ranking$sum
+WHR_ranking$WHR_rank <- rank(-WHR_ranking$WHR_score)
+
 WHR_ranking <- WHR_ranking %>% 
   select(!sum)
-WHR_ranking <- WHR_ranking[,c(1, 8, 2, 3, 4, 5, 6, 7, 9)]
+WHR_ranking <- WHR_ranking[,c(1, 8, 10, 2, 3, 4, 5, 6, 7, 9)]
+names(WHR_ranking)[names(WHR_ranking) == 'WHR_ranking'] <- 'COUNTRY_ISO3'
+
+WHR_ranking_summary <- WHR_ranking %>% 
+  select(COUNTRY_ISO3, WHR_score, WHR_rank)
+
+WHR_ranking_summary$COUNTRY_ISO3 <- countrycode(WHR_ranking_summary$COUNTRY_ISO3, 'country.name', 'iso3c') 
+
+WHR_ranking_summary$COUNTRY_ISO3[WHR_ranking_summary$WHR_rank == 34] <- "XKX"
+WHR_ranking_summary$COUNTRY_ISO3[WHR_ranking_summary$WHR_rank == 107] <- "TUR"
+#Check again
 ```
 
-**Age-standardized Well-being Rankings**
-```{r}
 
+**Age-standardized Life-satisfaction Ranking**
+Reading Gallup data, add age groups
+```{r}
+gallup_main <- readRDS(
+  "/Users/makototakahara/Downloads/(231027)GWP_cleaned_ageStandardizedWellbeing.rds")
+gallup_main$Weighted.LS <- as.numeric(gallup_main$WGT*gallup_main$WP16)
+
+gallup_main <- gallup_main %>% 
+  filter(!is.na(WP1220),
+         YEAR_CALENDAR %in% c(2020, 2021, 2022)) %>% 
+  #group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>% 
+  mutate(
+    age_group = case_when(
+      WP1220 > 14 & WP1220 <= 29 ~ "15-29",
+      WP1220 > 29 & WP1220 <= 44 ~ "30-44",
+      WP1220 > 44 & WP1220 <= 59 ~ "45-59",
+      WP1220 > 59 & WP1220 <= 74 ~ "60-74",
+      WP1220 > 74 ~ "Over 75"))
+```
+
+Creating Age-Standardized Life-Satisfaction Ranking
+```{r}
+gallup_age <- gallup_main %>% 
+  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
+gallup_age[is.na(gallup_age)] = 0
+
+standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441,
+                             0.1203791469, 0.04150304671)
+
+countries <- colnames(gallup_age)[2:144]
+age_standardized_ranking <- gallup_age %>%
+  summarise(across(all_of(countries), 
+                   list(ASLS = ~ weighted.mean(., standard_population))))
+age_standardized_ranking <- pivot_longer(age_standardized_ranking, 
+                                           cols = everything(),
+                                           names_to = "COUNTRY_ISO3", 
+                                           values_to = "AS_score")
+age_standardized_ranking$COUNTRY_ISO3 <- gsub(
+  '_ASLS', '', age_standardized_ranking$COUNTRY_ISO3)
+
+```
+
+Comparing with WHR ranking
+```{r}
+age_standardized_ranking$AS_score <- as.numeric(
+  age_standardized_ranking$AS_score)
+age_standardized_ranking$AS_rank <- rank(-age_standardized_ranking$AS_score)
+
+WHR_AS_comparison <- merge(WHR_ranking_summary, age_standardized_ranking, by="COUNTRY_ISO3", all=FALSE)
+
+WHR_AS_comparison$rank_difference <- (WHR_AS_comparison$WHR_rank -
+                                        WHR_AS_comparison$AS_rank)
+WHR_AS_comparison$score_difference <- (WHR_AS_comparison$AS_score -
+                                         WHR_AS_comparison$WHR_score)
+```
+
+Calculating Contributions of Predictors
+
+
+```{r}
+age_matrix <- gallup_main %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>% 
+  summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>% 
+  arrange(YEAR_CALENDAR, age_group)
 ```
 
