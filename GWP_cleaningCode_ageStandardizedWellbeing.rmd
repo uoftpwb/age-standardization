@@ -1,7 +1,7 @@
 ---
 title: "GallupDataPreparation"
 author: "Kenith"
-date: '2023-10-27'
+date: '2023-11-01'
 ---
 
 ## 0. Subset the Gallup raw data
@@ -24,11 +24,10 @@ varRequired <- c(
 
 # Subset gallupRaw to include only the variables specified in varRequired
 gallupSubset <- gallupRaw %>% 
-    select(all_of(varRequired)) %>% 
-    filter(YEAR_WAVE >= 2019)
+    select(all_of(varRequired))
 
 # Save the gallupSubset data frame to a .rds file for later use
-saveRDS(gallupSubset, "(231027)GWP_RawSubset_ageStandardizedWellbeing.rds")
+saveRDS(gallupSubset, "(231101)GWP_RawSubset_ageStandardizedWellbeing.rds")
 ```
 
 The environment used for the ABOVE code had the following specifications:
@@ -58,7 +57,7 @@ Once we had the subset of the Gallup data, we imported the data and loaded the n
 library(dplyr)
 
 # Read the RDS file
-gallupSubset <- readRDS("(231027)GWP_RawSubset_ageStandardizedWellbeing.rds")
+gallupSubset <- readRDS("(231101)GWP_RawSubset_ageStandardizedWellbeing.rds")
 ```
 
 ### 1.2 Create `YEAR_INTERVIEW` 
@@ -92,5 +91,5 @@ The object `gallup` is now a cleaned subset of the Gallup data.
 We save the Gallup cleaned data to a .rds file for later use
 
 ```{r exporting-gallup-cleaned}
-saveRDS(gallup, "(231027)GWP_cleaned_ageStandardizedWellbeing.rds")
+saveRDS(gallup, "(231101)GWP_cleaned_ageStandardizedWellbeing.rds")
 ```
