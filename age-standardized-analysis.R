@@ -5,7 +5,6 @@ library(ggalluvial)
 
 #Define Functions
 
-
 #Reading WHR Data
 WHR_data <- read.csv("/Users/makototakahara/Downloads/WHR2023Table.csv")
 
@@ -41,7 +40,7 @@ WHR_summary <- rbind(WHR_summary, data.frame(Country.name="Dystopia", Life.Ladde
                                              Perceptions.of.corruption=NA))
 
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"] <-
-  10.792000-(1.888/0.3586569) #Venezuela Log GDP per Capita?
+  5.527147 #Venezuela Log GDP per Capita?
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Social.support"] <-
   min(WHR_summary$Social.support, na.rm = TRUE)
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Healthy.life.expectancy.at.birth"] <-
