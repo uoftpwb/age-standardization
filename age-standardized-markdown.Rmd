@@ -509,13 +509,19 @@ standardized_contributions$Rank <- rank(-standardized_contributions$AS.LS)
 Group 1: 15 to 29
 ```{r}
 #Read Data
-age_matrix_1 <- age_matrix %>% 
-  filter(age_group == "15-29") %>% 
-  dplyr::select(-c(age_group))
-  
-age_standardized_scores_1 <- gather(age_matrix_1, COUNTRY_ISO3, AS.LS, AFG:ZWE)
+# age_matrix_1 <- age_matrix %>% 
+#   filter(age_group == "15-29") %>% 
+#   dplyr::select(-c(age_group))
+#   
+# age_standardized_scores_1 <- gather(age_matrix_1, COUNTRY_ISO3, AS.LS, AFG:ZWE)
 
-colnames(age_standardized_scores_1) <- c("year", "COUNTRY_ISO3", "AS.LS")
+age_standardized_scores_1  <- gallup_main %>% 
+  filter(age_group == "15-29",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na() %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_standardized_scores_1) <- c("COUNTRY_ISO3", "year", "AS.LS")
 
 WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
 WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
@@ -655,13 +661,19 @@ standardized_contributions_1$Rank <- rank(-standardized_contributions_1$AS.LS)
 Group 2: 30-44
 ```{r}
 #Read Data
-age_matrix_2 <- age_matrix %>% 
-  filter(age_group == "30-44") %>% 
-  dplyr::select(-c(age_group))
+# age_matrix_2 <- age_matrix %>% 
+#   filter(age_group == "30-44") %>% 
+#   dplyr::select(-c(age_group))
+# 
+# age_standardized_scores_2 <- gather(age_matrix_2, COUNTRY_ISO3, AS.LS, AFG:ZWE)
 
-age_standardized_scores_2 <- gather(age_matrix_2, COUNTRY_ISO3, AS.LS, AFG:ZWE)
-
-colnames(age_standardized_scores_2) <- c("year", "COUNTRY_ISO3", "AS.LS")
+age_standardized_scores_2  <- gallup_main %>% 
+  filter(age_group == "30-44",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na() %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_standardized_scores_2) <- c("COUNTRY_ISO3", "year", "AS.LS")
 
 WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
 WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
@@ -801,13 +813,21 @@ standardized_contributions_2$Rank <- rank(-standardized_contributions_2$AS.LS)
 Group 3: 45-59
 ```{r}
 #Read Data
-age_matrix_3 <- age_matrix %>% 
-  filter(age_group == "45-59") %>% 
-  dplyr::select(-c(age_group))
+# age_matrix_3 <- age_matrix %>% 
+#   filter(age_group == "45-59") %>% 
+#   dplyr::select(-c(age_group))
+# 
+# age_standardized_scores_3 <- gather(age_matrix_3, COUNTRY_ISO3, AS.LS, AFG:ZWE)
+# 
+# colnames(age_standardized_scores_3) <- c("year", "COUNTRY_ISO3", "AS.LS")
 
-age_standardized_scores_3 <- gather(age_matrix_3, COUNTRY_ISO3, AS.LS, AFG:ZWE)
-
-colnames(age_standardized_scores_3) <- c("year", "COUNTRY_ISO3", "AS.LS")
+age_standardized_scores_3  <- gallup_main %>% 
+  filter(age_group == "45-59",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na() %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_standardized_scores_3) <- c("COUNTRY_ISO3", "year", "AS.LS")
 
 WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
 WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
@@ -947,13 +967,21 @@ standardized_contributions_3$Rank <- rank(-standardized_contributions_3$AS.LS)
 Group 4: 60-74
 ```{r}
 #Read Data
-age_matrix_4 <- age_matrix %>% 
-  filter(age_group == "60-74") %>% 
-  dplyr::select(-c(age_group))
+# age_matrix_4 <- age_matrix %>% 
+#   filter(age_group == "60-74") %>% 
+#   dplyr::select(-c(age_group))
+# 
+# age_standardized_scores_4 <- gather(age_matrix_4, COUNTRY_ISO3, AS.LS, AFG:ZWE)
+# 
+# colnames(age_standardized_scores_4) <- c("year", "COUNTRY_ISO3", "AS.LS")
 
-age_standardized_scores_4 <- gather(age_matrix_4, COUNTRY_ISO3, AS.LS, AFG:ZWE)
-
-colnames(age_standardized_scores_4) <- c("year", "COUNTRY_ISO3", "AS.LS")
+age_standardized_scores_4  <- gallup_main %>% 
+  filter(age_group == "60-74",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na() %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_standardized_scores_4) <- c("COUNTRY_ISO3", "year", "AS.LS")
 
 WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
 WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
@@ -1093,13 +1121,21 @@ standardized_contributions_4$Rank <- rank(-standardized_contributions_4$AS.LS)
 Group 5: Over 74
 ```{r}
 #Read Data
-age_matrix_5 <- age_matrix %>% 
-  filter(age_group == "Over 75") %>% 
-  dplyr::select(-c(age_group))
+# age_matrix_5 <- age_matrix %>% 
+#   filter(age_group == "Over 75") %>% 
+#   dplyr::select(-c(age_group))
+# 
+# age_standardized_scores_5 <- gather(age_matrix_5, COUNTRY_ISO3, AS.LS, AFG:ZWE)
+# 
+# colnames(age_standardized_scores_5) <- c("year", "COUNTRY_ISO3", "AS.LS")
 
-age_standardized_scores_5 <- gather(age_matrix_5, COUNTRY_ISO3, AS.LS, AFG:ZWE)
-
-colnames(age_standardized_scores_5) <- c("year", "COUNTRY_ISO3", "AS.LS")
+age_standardized_scores_5  <- gallup_main %>% 
+  filter(age_group == "Over 75",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na() %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_standardized_scores_5) <- c("COUNTRY_ISO3", "year", "AS.LS")
 
 WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
 WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
@@ -1266,8 +1302,6 @@ significant_difference <- WHR_AS_comparison %>%
   filter(score_difference >= 0.25 | score_difference <= -0.25)
 
 significant_difference_countries <- significant_difference$COUNTRY_ISO3
-
-significant_difference_details <- gallup_age[, significant_difference_countries]
 
 sd(WHR_AS_comparison$WHR_score)
 sd(WHR_AS_comparison$AS_score)
@@ -1827,7 +1861,7 @@ WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013)
 comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by="COUNTRY_ISO3")
 notable_countries <- comparison_2013_2023 %>% 
   filter(WHR_score > Ladder & AS_score.x < AS_score.y) %>% 
-  dplyr::select(COUNTRY_ISO3, COUNTRY_NAME, WHR_score, AS_score.x, Ladder, AS_score.y)
+  dplyr::select(COUNTRY_ISO3, Country, WHR_score, AS_score.x, Ladder, AS_score.y)
 colnames(notable_countries) <- c("COUNTRY_ISO3", "COUNTRY_NAME", "WHR_2023", "AS_2023", "WHR_2013", "AS_2013")
 
 notable_countries <- notable_countries %>% 
@@ -1843,6 +1877,121 @@ mean(abs(WHR_AS_comparison$score_difference))
 
 significant_changes_in_rank <- WHR_AS_comparison %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, COUNTRY_NAME, WHR_score, AS_score, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, region, WHR_score, AS_score, rank_difference, score_difference)
+```
+
+Analysis of Age-Specific Rankings - Age Group 1
+```{r}
+standardized_contributions_1$COUNTRY_ISO3 <- countrycode(
+  sourcevar = standardized_contributions_1$standardized_contributions_1,
+  origin = "country.name",
+  destination = "iso3c"
+)
+standardized_contributions_1$COUNTRY_ISO3[standardized_contributions_1$standardized_contributions_1 == "Kosovo"] <- "XKX"
+standardized_contributions_1 <- merge(standardized_contributions_1, WHR_ranking_summary, by = "COUNTRY_ISO3")
+standardized_contributions_1 <- standardized_contributions_1 %>%  
+  mutate(rank_difference = Rank - WHR_rank,
+         score_difference = AS.LS - WHR_score)
+            
+rd1 <- mean(abs(standardized_contributions_1$rank_difference))
+sd1 <- mean(abs(standardized_contributions_1$score_difference))
+
+
+significant_changes_in_rank_1 <- standardized_contributions_1 %>% 
+  filter(abs(rank_difference) >= 10) %>% 
+  dplyr::select(COUNTRY_ISO3, standardized_contributions_1, WHR_score, AS.LS, rank_difference, score_difference)
+```
+
+Analysis of Age-Specific Rankings - Age Group 2
+```{r}
+standardized_contributions_2$COUNTRY_ISO3 <- countrycode(
+  sourcevar = standardized_contributions_2$standardized_contributions_2,
+  origin = "country.name",
+  destination = "iso3c"
+)
+standardized_contributions_2$COUNTRY_ISO3[standardized_contributions_2$standardized_contributions_2 == "Kosovo"] <- "XKX"
+standardized_contributions_2 <- merge(standardized_contributions_2, WHR_ranking_summary, by = "COUNTRY_ISO3")
+standardized_contributions_2 <- standardized_contributions_2 %>%  
+  mutate(rank_difference = Rank - WHR_rank,
+         score_difference = AS.LS - WHR_score)
+            
+rd2 <- mean(abs(standardized_contributions_2$rank_difference))
+sd2 <- mean(abs(standardized_contributions_2$score_difference))
+
+
+significant_changes_in_rank_2 <- standardized_contributions_2 %>% 
+  filter(abs(rank_difference) >= 10) %>% 
+  dplyr::select(COUNTRY_ISO3, standardized_contributions_2, WHR_score, AS.LS, rank_difference, score_difference)
+```
+
+Analysis of Age-Specific Rankings - Age Group 3
+```{r}
+standardized_contributions_3$COUNTRY_ISO3 <- countrycode(
+  sourcevar = standardized_contributions_3$standardized_contributions_3,
+  origin = "country.name",
+  destination = "iso3c"
+)
+standardized_contributions_3$COUNTRY_ISO3[standardized_contributions_3$standardized_contributions_3 == "Kosovo"] <- "XKX"
+standardized_contributions_3 <- merge(standardized_contributions_3, WHR_ranking_summary, by = "COUNTRY_ISO3")
+standardized_contributions_3 <- standardized_contributions_3 %>%  
+  mutate(rank_difference = Rank - WHR_rank,
+         score_difference = AS.LS - WHR_score)
+            
+rd3 <- mean(abs(standardized_contributions_3$rank_difference))
+sd3 <- mean(abs(standardized_contributions_3$score_difference))
+
+
+significant_changes_in_rank_3 <- standardized_contributions_3 %>% 
+  filter(abs(rank_difference) >= 10) %>% 
+  dplyr::select(COUNTRY_ISO3, standardized_contributions_3, WHR_score, AS.LS, rank_difference, score_difference)
+```
+
+Analysis of Age-Specific Rankings - Age Group 4
+```{r}
+standardized_contributions_4$COUNTRY_ISO3 <- countrycode(
+  sourcevar = standardized_contributions_4$standardized_contributions_4,
+  origin = "country.name",
+  destination = "iso3c"
+)
+standardized_contributions_4$COUNTRY_ISO3[standardized_contributions_4$standardized_contributions_4 == "Kosovo"] <- "XKX"
+standardized_contributions_4 <- merge(standardized_contributions_4, WHR_ranking_summary, by = "COUNTRY_ISO3")
+standardized_contributions_4 <- standardized_contributions_4 %>%  
+  mutate(rank_difference = Rank - WHR_rank,
+         score_difference = AS.LS - WHR_score)
+            
+rd4 <- mean(abs(standardized_contributions_4$rank_difference))
+sd4 <- mean(abs(standardized_contributions_4$score_difference))
+
+
+significant_changes_in_rank_4 <- standardized_contributions_4 %>% 
+  filter(abs(rank_difference) >= 10) %>% 
+  dplyr::select(COUNTRY_ISO3, standardized_contributions_4, WHR_score, AS.LS, rank_difference, score_difference)
+```
+
+Analysis of Age-Specific Rankings - Age Group 5
+```{r}
+standardized_contributions_5$COUNTRY_ISO3 <- countrycode(
+  sourcevar = standardized_contributions_5$standardized_contributions_5,
+  origin = "country.name",
+  destination = "iso3c"
+)
+standardized_contributions_5$COUNTRY_ISO3[standardized_contributions_5$standardized_contributions_5 == "Kosovo"] <- "XKX"
+standardized_contributions_5 <- merge(standardized_contributions_5, WHR_ranking_summary, by = "COUNTRY_ISO3")
+standardized_contributions_5 <- standardized_contributions_5 %>%  
+  mutate(rank_difference = Rank - WHR_rank,
+         score_difference = AS.LS - WHR_score)
+            
+rd5 <- mean(abs(standardized_contributions_5$rank_difference))
+sd5 <- mean(abs(standardized_contributions_5$score_difference))
+
+
+significant_changes_in_rank_5 <- standardized_contributions_5 %>% 
+  filter(abs(rank_difference) >= 10) %>% 
+  dplyr::select(COUNTRY_ISO3, standardized_contributions_5, WHR_score, AS.LS, rank_difference, score_difference)
+
+
+rank_diff <- c(rd1, rd2, rd3, rd4, rd5)
+score_diff <- c(sd1, sd2, sd3, sd4, sd5)
+age_specific_differences <- data.frame(rank_diff, score_diff)
 ```
 
