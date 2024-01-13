@@ -2018,7 +2018,6 @@ age_specific_differences <- data.frame(rank_diff, score_diff)
 Ranking Comparison Table:
 ```{r}
 ranking_comparisons <- WHR_AS_comparison %>% 
-  filter(WHR_rank <= 10 | WHR_rank >= 128) %>% 
   dplyr::select(COUNTRY_ISO3, region, WHR_score, WHR_rank, AS_score, AS_rank)
 
 age_specific_ranking_comparisons <- standardized_contributions_1 %>% 
@@ -2041,4 +2040,7 @@ age_specific_ranking_comparisons <- standardized_contributions_1 %>%
   ) 
 
 ranking_comparisons <- left_join(ranking_comparisons, age_specific_ranking_comparisons, by = "COUNTRY_ISO3")
+
+ranking_comparisons_summary <- ranking_comparisons %>% 
+  filter(WHR_rank <= 10 | WHR_rank >= 128)
 ```
