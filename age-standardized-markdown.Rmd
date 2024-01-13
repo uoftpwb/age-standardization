@@ -23,6 +23,7 @@ Reading WHR Data
 ```{r}
 WHR_data <- read.csv("/Users/makototakahara/Downloads/WHR2023Table.csv")
 
+# Summary of life ladder + raw Ddata for predictors
 WHR_summary <- WHR_data %>% filter(year >= 2020, year <= 2022)%>% 
   group_by(Country.name) %>% 
   summarize(Life.Ladder = weighted.mean(Life.Ladder, n),
@@ -36,6 +37,7 @@ WHR_summary <- WHR_data %>% filter(year >= 2020, year <= 2022)%>%
 
 Regression of Life Ladder to 6 predictors
 ```{r}
+# Filter missing values for regression
 regression_data <- WHR_data %>%
   filter(!is.na(Life.Ladder),
          !is.na(Log.GDP.per.capita),
@@ -53,6 +55,7 @@ WHR_regression <- plm(Life.Ladder ~ Log.GDP.per.capita+Social.support+
 
 Calculating Venezula's Log GDP per capita
 ```{r}
+# Venezuela's GDP is missing, so we use all other values to working backwards from WHR. Usually, we could work backwards without this complicated process using the results of the regression. However, this is not possible unless we have Venezuela's GDP as Venezuela's GDP is Dystopia's GDP. 
 gdp_contributions <- c(1.888380408, 1.949405551, 1.925507665, 1.833397985, 1.942273855, 1.920950174, 1.994439602, 2.021803141, 2.199664354, 1.841704249, 1.926718116, 1.898795009, 1.881438851, 2.152112246, 1.980279803, 1.919438958, 1.906878233, 1.823468804, 1.856903434, 1.807981849, 1.855644822, 1.815317154, 1.586957693, 1.725929260, 2.167941332, 2.015041590, 1.617422104, 1.731086135, 1.860922694, 1.798477411, 1.798105359, 1.831728816, 1.374470234, 1.645203710, 1.550388217, 1.841345787, 1.713736892, 1.766774416, 1.108565807, 1.737142801, 1.882560015, 1.287179708, 1.663887262, 1.551958442, 1.823535442, 1.825132132, 1.726533294, 1.454480886, 1.277642131, 1.754487276, 1.589547515, 1.114858866, 1.227176905, 1.664970160, 1.758063197, 1.852753997, 1.707674265, 1.588978410, 1.515194416, 1.379249096, 1.061276436, 1.424565315, 1.510386109, 1.348590732, 1.428491592, 1.537114263, 1.304714680, 1.240158796, 1.679553747, 1.466522813, 1.455285072, 1.536397338, 1.342591405, 1.389684558, 1.238053203, 1.635417581, 0.978851676, 1.466145873, 0.971865714, 1.353351712, 1.950940251, 1.449203372, 1.383815885, 1.416947603, 0.921178162, 1.497870803, 1.232199073, 1.477461338, 0.844172418, 1.358194232, 1.093752742, 1.438447475, 1.064864993, 0.964770198, 0.570097387, 1.280983448, 1.236021280, 1.464571595, 0.942726910, 1.098963261, 0.767502248, 1.288983583, 1.714365840, 1.100695729, 1.080818176, 0.561017454, 1.333035707, 1.051386952, 1.421779513, 0.785096049, 0.622039676, 1.025035024, 0.924076915, 1.031916738, 1.132664084, 0.760724187, 0.763360739, 1.377242088, 0.769851625, 1.292441964, 0.793330133, 0.627642870, 1.159242749, 0.632469475, 0.913520396, 0.835894883, 0.913785815, 0.636526823, 1.471394062, 0.530779243, 0.758278608, 0.669698656, 1.416998625, 0.644599795)
 
 gdp_values <- WHR_summary %>% 
@@ -78,11 +81,13 @@ venezuela_GDP <- mean(venezuela_gdp_values)
 
 Creating Dystopia
 ```{r}
+# Dystopia collects the worst values for each 6 predictors, which becomes the baseline. We first create an empty row with the country name "Dystopia"
 dystopia <- data.frame(Country.name="Dystopia", Life.Ladder=NA, Log.GDP.per.capita=NA, 
                                              Social.support=NA, Healthy.life.expectancy.at.birth=NA, 
                                              Freedom.to.make.life.choices=NA, Generosity=NA, 
                                              Perceptions.of.corruption=NA)
 
+# We bind this row to the WHR_summary data frame, setting the values to be the minimum value (maximum for corruption) of all of the countries
 WHR_summary <- rbind(WHR_summary, dystopia)
 
 WHR_summary[WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"] <-
@@ -101,6 +106,8 @@ WHR_summary[WHR_summary$Country.name=="Dystopia", "Perceptions.of.corruption"] <
 
 Impute missing data
 ```{r}
+# We impute the missing data by working backwards through the WHR. A limitation of this is that it might be slightly inaccurate, as the WHR imputes data before regression. 
+
 WHR_summary[WHR_summary$Country.name=="State of Palestine", "Log.GDP.per.capita"] <- 
   (1.144)/(summary(WHR_regression)$coefficients["Log.GDP.per.capita", "Estimate"]) + as.numeric(WHR_summary[
     WHR_summary$Country.name=="Dystopia", "Log.GDP.per.capita"])
@@ -164,6 +171,8 @@ WHR_summary[WHR_summary$Country.name=="United Arab Emirates", "Perceptions.of.co
 
 Construct WHR Ranking
 ```{r}
+# For each predictor, find the distance of the country's value from Dystopia's value. This is necessary to determine how much it contributes to the LS score. This is done by multiplying the distance from Dystopia by the coefficient corresponding to that predictor. 
+
 distance_from_dystopia <- cbind(WHR_summary %>% 
                                   dplyr::select(Country.name) %>% 
                                   filter(Country.name != "Dystopia"),
@@ -194,7 +203,6 @@ WHR_ranking_summary$COUNTRY_ISO3 <- countrycode(WHR_ranking_summary$COUNTRY_ISO3
 
 WHR_ranking_summary$COUNTRY_ISO3[WHR_ranking_summary$WHR_rank == 34] <- "XKX"
 WHR_ranking_summary$COUNTRY_ISO3[WHR_ranking_summary$WHR_rank == 107] <- "TUR"
-#Check again
 ```
 
 
@@ -219,35 +227,11 @@ gallup_main <- gallup_main %>%
 
 Creating Age-Standardized Life-Satisfaction Ranking
 ```{r}
-# gallup_age <- gallup_main %>% 
-#   group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
-#   summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
-#   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-# gallup_age[is.na(gallup_age)] = 0
-
-# gallup_age <- gallup_main %>%
-#   filter(YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>%
-#   group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>%
-#   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-#   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-# gallup_age[is.na(gallup_age)] = 0
-# 
-# standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441,
-#                               0.1203791469, 0.04150304671)
-# 
-# countries <- colnames(gallup_age)[2:144]
-# age_standardized_ranking <- gallup_age %>%
-#   summarise(across(all_of(countries),
-#                    list(ASLS = ~ weighted.mean(., standard_population))))
-# age_standardized_ranking <- pivot_longer(age_standardized_ranking,
-#                                            cols = everything(),
-#                                            names_to = "COUNTRY_ISO3",
-#                                            values_to = "AS_score")
-# age_standardized_ranking$COUNTRY_ISO3 <- gsub(
-#   '_ASLS', '', age_standardized_ranking$COUNTRY_ISO3)
+# Standard poopulation by WHO includes from age 0. Thus, reweighted to be only from Age 15 or above. Some rounding error means that these add up to 1.000474.
 
 standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441,
                               0.1203791469, 0.04150304671)
+
 
 gallup_age_2020 <- gallup_main %>% 
   filter(YEAR_CALENDAR == 2020) %>% 
@@ -326,9 +310,6 @@ age_standardized_ranking <- age_standardized_ranking %>%
   mutate(AS_score = (AS_score_2020*n_2020 + AS_score_2021*n_2021 + AS_score_2022*n_2022)/(n_2020+n_2021+n_2022)) %>% 
   dplyr::select(COUNTRY_ISO3, AS_score)
 
-
-
-
 test <- gallup_main %>% 
   filter(COUNTRY_ISO3 == "LSO",
          YEAR_CALENDAR == 2022)
@@ -352,10 +333,10 @@ WHR_AS_comparison$score_difference <- (WHR_AS_comparison$AS_score -
 
 Merging Data for Regression Analysis
 ```{r}
-age_matrix <- gallup_main %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>% 
+age_matrix <- gallup_main %>%
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>% 
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
   arrange(YEAR_CALENDAR, age_group)
 
 age_standardized_scores_wide <- age_matrix  %>%
@@ -1610,29 +1591,11 @@ Gini(WHR_AS_comparison$AS_score, conf.level = 0.95)
 
 Ranking for 2013
 ```{r}
-# #NEED TO GET N FROM WHR
-# WHR_summary_2013 <- WHR_data %>% filter(year >= 2010, year <= 2012) %>% 
-#   group_by(Country.name) %>% 
-#   summarize(Life.Ladder = weighted.mean(Life.Ladder, n),
-#             Log.GDP.per.capita = mean(Log.GDP.per.capita, na.rm = TRUE),
-#             Social.support = mean(Social.support, na.rm = TRUE),
-#             Healthy.life.expectancy.at.birth = mean(Healthy.life.expectancy.at.birth, na.rm = TRUE),
-#             Freedom.to.make.life.choices = mean(Freedom.to.make.life.choices, na.rm = TRUE),
-#             Generosity = mean(Generosity, na.rm = TRUE),
-#             Perceptions.of.corruption = mean(Perceptions.of.corruption, na.rm = TRUE))
-# 
-# hello <- gallup_main %>% filter(YEAR_CALENDAR >= 2010, YEAR_CALENDAR <= 2012) %>% 
-#   drop_na(Weighted.LS) %>% 
-#   group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>% 
-#   summarize(Life.Ladder = sum(Weighted.LS)/sum(WGT),
-#             n = n())
-  
-
 gallup_age_2010 <- gallup_main %>% 
   filter(YEAR_CALENDAR == 2010) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  group_by(COUNTRYNEW, age_group, .drop = FALSE) %>% 
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
+  pivot_wider(names_from = COUNTRYNEW, values_from = WeightedMeanLS)
 gallup_age_2010[is.na(gallup_age_2010)] = 0
 countries_2010 <- colnames(gallup_age_2010)[2:125]
 age_standardized_ranking_2010 <- gallup_age_2010 %>%
@@ -1640,22 +1603,22 @@ age_standardized_ranking_2010 <- gallup_age_2010 %>%
                    list(ASLS = ~ weighted.mean(., standard_population))))
 age_standardized_ranking_2010 <- pivot_longer(age_standardized_ranking_2010, 
                                            cols = everything(),
-                                           names_to = "COUNTRY_ISO3", 
+                                           names_to = "COUNTRYNEW", 
                                            values_to = "AS_score_2010")
-age_standardized_ranking_2010$COUNTRY_ISO3 <- gsub(
-  '_ASLS', '', age_standardized_ranking_2010$COUNTRY_ISO3)
+age_standardized_ranking_2010$COUNTRYNEW <- gsub(
+  '_ASLS', '', age_standardized_ranking_2010$COUNTRYNEW)
 n_2010 <- gallup_main %>% 
   drop_na(Weighted.LS) %>% 
   filter(YEAR_CALENDAR == 2010) %>% 
-  group_by(COUNTRY_ISO3) %>% 
+  group_by(COUNTRYNEW) %>% 
   summarize(n_2010 = n()) 
 age_standardized_ranking_2010 <- merge(age_standardized_ranking_2010, n_2010)
 
 gallup_age_2011 <- gallup_main %>% 
   filter(YEAR_CALENDAR == 2011) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  group_by(COUNTRYNEW, age_group, .drop = FALSE) %>% 
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
+  pivot_wider(names_from = COUNTRYNEW, values_from = WeightedMeanLS)
 gallup_age_2011[is.na(gallup_age_2011)] = 0
 countries_2011 <- colnames(gallup_age_2011)[2:149]
 age_standardized_ranking_2011 <- gallup_age_2011 %>%
@@ -1663,22 +1626,22 @@ age_standardized_ranking_2011 <- gallup_age_2011 %>%
                    list(ASLS = ~ weighted.mean(., standard_population))))
 age_standardized_ranking_2011 <- pivot_longer(age_standardized_ranking_2011, 
                                            cols = everything(),
-                                           names_to = "COUNTRY_ISO3", 
+                                           names_to = "COUNTRYNEW", 
                                            values_to = "AS_score_2011")
-age_standardized_ranking_2011$COUNTRY_ISO3 <- gsub(
-  '_ASLS', '', age_standardized_ranking_2011$COUNTRY_ISO3)
+age_standardized_ranking_2011$COUNTRYNEW <- gsub(
+  '_ASLS', '', age_standardized_ranking_2011$COUNTRYNEW)
 n_2011 <- gallup_main %>% 
   drop_na(Weighted.LS) %>% 
   filter(YEAR_CALENDAR == 2011) %>% 
-  group_by(COUNTRY_ISO3) %>% 
+  group_by(COUNTRYNEW) %>% 
   summarize(n_2011 = n()) 
 age_standardized_ranking_2011 <- merge(age_standardized_ranking_2011, n_2011)
 
 gallup_age_2012 <- gallup_main %>% 
   filter(YEAR_CALENDAR == 2012) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  group_by(COUNTRYNEW, age_group, .drop = FALSE) %>% 
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
+  pivot_wider(names_from = COUNTRYNEW, values_from = WeightedMeanLS)
 gallup_age_2012[is.na(gallup_age_2012)] = 0
 countries_2012 <- colnames(gallup_age_2012)[2:143]
 age_standardized_ranking_2012 <- gallup_age_2012 %>%
@@ -1686,25 +1649,25 @@ age_standardized_ranking_2012 <- gallup_age_2012 %>%
                    list(ASLS = ~ weighted.mean(., standard_population))))
 age_standardized_ranking_2012 <- pivot_longer(age_standardized_ranking_2012, 
                                            cols = everything(),
-                                           names_to = "COUNTRY_ISO3", 
+                                           names_to = "COUNTRYNEW", 
                                            values_to = "AS_score_2012")
-age_standardized_ranking_2012$COUNTRY_ISO3 <- gsub(
-  '_ASLS', '', age_standardized_ranking_2012$COUNTRY_ISO3)
+age_standardized_ranking_2012$COUNTRYNEW <- gsub(
+  '_ASLS', '', age_standardized_ranking_2012$COUNTRYNEW)
 n_2012 <- gallup_main %>% 
   drop_na(Weighted.LS) %>% 
   filter(YEAR_CALENDAR == 2012) %>% 
-  group_by(COUNTRY_ISO3) %>% 
+  group_by(COUNTRYNEW) %>% 
   summarize(n_2012 = n()) 
 age_standardized_ranking_2012 <- merge(age_standardized_ranking_2012, n_2012)
 
-age_ranking_2010_2011 <- merge(x = age_standardized_ranking_2010, y = age_standardized_ranking_2011, by = "COUNTRY_ISO3", all = TRUE)
-age_standardized_ranking_2013 <- merge(x = age_ranking_2010_2011, y = age_standardized_ranking_2012, by = "COUNTRY_ISO3", all = TRUE)
+age_ranking_2010_2011 <- merge(x = age_standardized_ranking_2010, y = age_standardized_ranking_2011, by = "COUNTRYNEW", all = TRUE)
+age_standardized_ranking_2013 <- merge(x = age_ranking_2010_2011, y = age_standardized_ranking_2012, by = "COUNTRYNEW", all = TRUE)
 age_standardized_ranking_2013[is.na(age_standardized_ranking_2013)] <- 0
 
 age_standardized_ranking_2013 <- age_standardized_ranking_2013 %>% 
   mutate(AS_score = (AS_score_2010*n_2010 + AS_score_2011*n_2011 + AS_score_2012*n_2012)/(n_2010+n_2011+n_2012))
 age_standardized_ranking_2013 <- age_standardized_ranking_2013 %>% 
-  dplyr::select(COUNTRY_ISO3, AS_score)
+  dplyr::select(Country = COUNTRYNEW, AS_score)
 
 WHR_data_2013 <- read.table(header=TRUE, text=
 "Country Region Ladder Social_support Freedom Corruption Donation Generosity Positive_affect Negative_affect Happiness_yesterday GDP_per_capita Healthy_life_expectancy
@@ -1854,7 +1817,6 @@ Turkey 8 5.345 0.741 0.475 0.710 0.126 -0.214 0.640 0.344 0.707 12789 62.912
 Turkmenistan 2 5.628 0.955 0.786 0.597 0.235 -0.071 0.612 0.120 0.596 7831 54.837
 Uganda 9 4.443 0.866 0.728 0.843 0.201 0.032 0.693 0.257 0.710 1152 44.821
 Ukraine 2 5.057 0.880 0.542 0.934 0.087 -0.200 0.558 0.213 0.470 6052 61.601
-Ukraine 2 5.057 0.880 0.542 0.934 0.087 -0.200 0.558 0.213 0.470 6052 61.601
 United_Arab_Emirates 8 7.144 0.878 0.895 0.355 0.472 0.044 0.765 0.223 0.764 43295 64.545
 United_Kingdom 0 6.883 0.947 0.887 0.448 0.744 0.339 0.845 0.180 0.873 32797 71.645
 United_States 7 7.082 0.917 0.834 0.698 0.621 0.191 0.844 0.254 0.877 42068 69.689
@@ -1869,6 +1831,30 @@ Zimbabwe 9 4.827 0.873 0.590 0.842 0.094 0.018 0.733 0.170 0.728 309 37.143")
 WHR_data_2013 <- WHR_data_2013 %>% 
   dplyr::select(Country, Ladder)
 
+WHR_data_2013$Country[WHR_data_2013$Country == "Bosnia_and_Herzegovina"] <- "Bosnia Herzegovina"
+WHR_data_2013$Country[WHR_data_2013$Country == "Burkina_Faso"] <- "Burkina Faso"
+WHR_data_2013$Country[WHR_data_2013$Country == "Central_African_Republic"] <- "Central African Republic"
+WHR_data_2013$Country[WHR_data_2013$Country == "Congo_Brazzaville"] <- "Congo Brazzaville"
+WHR_data_2013$Country[WHR_data_2013$Country == "Congo_Kinshasa"] <- "Congo Kinshasa"
+WHR_data_2013$Country[WHR_data_2013$Country == "Costa_Rica"] <- "Costa Rica"
+WHR_data_2013$Country[WHR_data_2013$Country == "Czech_Republic"] <- "Czech Republic"
+WHR_data_2013$Country[WHR_data_2013$Country == "Dominican_Republic"] <- "Dominican Republic"
+WHR_data_2013$Country[WHR_data_2013$Country == "El_Salvador"] <- "El Salvador"
+WHR_data_2013$Country[WHR_data_2013$Country == "Hong_Kong"] <- "Hong Kong"
+WHR_data_2013$Country[WHR_data_2013$Country == "Macedonia"] <- "North Macedonia"
+WHR_data_2013$Country[WHR_data_2013$Country == "New_Zealand"] <- "New Zealand"
+WHR_data_2013$Country[WHR_data_2013$Country == "North_Cyprus"] <- "Northern Cyprus"
+WHR_data_2013$Country[WHR_data_2013$Country == "Saudi_Arabia"] <- "Saudi Arabia"
+WHR_data_2013$Country[WHR_data_2013$Country == "Sierra_Leone"] <- "Sierra Leone"
+WHR_data_2013$Country[WHR_data_2013$Country == "South_Africa"] <- "South Africa"
+WHR_data_2013$Country[WHR_data_2013$Country == "South_Korea"] <- "South Korea"
+WHR_data_2013$Country[WHR_data_2013$Country == "Sri_Lanka"] <- "Sri Lanka"
+WHR_data_2013$Country[WHR_data_2013$Country == "Swaziland"] <- "Eswatini"
+WHR_data_2013$Country[WHR_data_2013$Country == "Trinidad_and_Tobago"] <- "Trinidad and Tobago"
+WHR_data_2013$Country[WHR_data_2013$Country == "United_Arab_Emirates"] <- "United Arab Emirates"
+WHR_data_2013$Country[WHR_data_2013$Country == "United_Kingdom"] <- "United Kingdom"
+WHR_data_2013$Country[WHR_data_2013$Country == "United_States"] <- "United States"
+
 WHR_data_2013$COUNTRY_ISO3 <- countrycode(WHR_data_2013$Country, 'country.name', 'iso3c') 
 WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "Kosovo"] <- "XKX"
 WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "Somaliland"] <- "XS"
@@ -1876,12 +1862,11 @@ WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "South_Korea"] <- "KOR"
 
 WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013)
 
-comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by="COUNTRY_ISO3")
+comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by.x="region", by.y="Country")
 notable_countries <- comparison_2013_2023 %>% 
   filter(WHR_score > Ladder & AS_score.x < AS_score.y |
          WHR_score < Ladder & AS_score.x > AS_score.y) %>% 
-  dplyr::select(COUNTRY_ISO3, Country, WHR_score, AS_score.x, Ladder, AS_score.y)
-colnames(notable_countries) <- c("COUNTRY_ISO3", "COUNTRY_NAME", "WHR_2023", "AS_2023", "WHR_2013", "AS_2013")
+  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3.x, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
 
 notable_countries <- notable_countries %>% 
   mutate(WHR_diff = WHR_2023 - WHR_2013,
@@ -2043,4 +2028,25 @@ ranking_comparisons <- left_join(ranking_comparisons, age_specific_ranking_compa
 
 ranking_comparisons_summary <- ranking_comparisons %>% 
   filter(WHR_rank <= 10 | WHR_rank >= 128)
+```
+
+Visualizing Ranking Changes
+```{r}
+a <- ranking_comparisons %>% 
+  dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG4_rank)
+
+color_scale <- scales::col_numeric(palette = "viridis", domain = range(a$WHR_rank))
+
+long_data <- tidyr::gather(a, key = "Ranking", value = "Value", -COUNTRY_ISO3, -COUNTRYNAME)
+long_data$COUNTRY_ISO3 <- reorder(long_data$COUNTRY_ISO3, long_data$Value)
+
+# Plot the heatmap
+ggplot(long_data, aes(x = COUNTRY_ISO3, y = Ranking, fill = Value)) +
+  geom_tile() +
+  scale_fill_viridis() +  # Use the same color scale for all ranks
+  theme_minimal() +
+  labs(title = "Comparison of Ranks",
+       x = "Country",
+       y = "Ranking",
+       fill = "WHR_rank")
 ```
