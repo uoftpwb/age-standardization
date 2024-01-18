@@ -372,7 +372,8 @@ Merging Data for Regression Analysis
 # age_matrix contains life satisfaction for each age group in each country-year
 age_matrix <- gallup_main %>%
   group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
-  summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
+  #summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
+  summarise(WeightedMeanLS = mean(Weighted.LS, na.rm=T)) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
   arrange(YEAR_CALENDAR, age_group)
 
@@ -1760,31 +1761,188 @@ ggplot(melted_df, aes(x = variable, y = WHR2, fill = value)) +
   scale_y_reverse() +
   guides(fill = guide_colourbar(reverse = TRUE))
 ```
+```{r}
+ranking_comparison_wide <- ranking_comparisons %>% 
+  dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG4_rank)
+ranking_comparison_wide <- ranking_comparison_wide[order(ranking_comparison_wide$WHR_rank), ]
+
+WHR_and_AS <- ranking_comparison_wide %>% select('WHR_rank', 'AS_rank')
+WHR_and_AG1 <- ranking_comparison_wide %>% select('WHR_rank', 'AG1_rank')
+WHR_and_AG4 <- ranking_comparison_wide %>% select('WHR_rank', 'AG4_rank')
+
+WHR_and_AS <- WHR_and_AS %>%
+  arrange(`AS_rank`)
+WHR_and_AS$AS_rank <- WHR_and_AS$WHR
+
+WHR_and_AG1 <- WHR_and_AG1 %>%
+  arrange(`AG1_rank`)
+WHR_and_AG1$AG1_rank <- WHR_and_AG1$WHR
+
+WHR_and_AG4 <- WHR_and_AG4 %>%
+  arrange(`AG4_rank`)
+WHR_and_AG4$AG4_rank <- WHR_and_AG4$WHR
+
+# This is ordered by each ranking, but the value represents the WHR Rank of the country in that spot.
+ranking_comparison_visualization_data  <- data.frame(ranking_comparison_wide %>% select(WHR_rank),
+                                                      WHR_and_AS %>% select(AS_rank),
+                                                      WHR_and_AG1 %>% select(AG1_rank),
+                                                      WHR_and_AG4 %>% select(AG4_rank),
+                                                     ranking_comparison_wide %>% select(WHR_rank)) %>% 
+  select("WHR" = WHR_rank, "Age-Standardized" = AS_rank, "Age Group 1" = AG1_rank, 
+         "Age Group 4" = AG4_rank, "WHR2" = WHR_rank.1)
+
+
+df_long <- reshape2::melt(ranking_comparison_visualization_data, id.vars = "WHR2")
+
+ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
+  geom_tile() +
+  scale_fill_manual(
+    values = c(
+      viridis(137, direction = -1)[1:89],
+      "red",
+      viridis(137, direction = -1)[91:123],
+      "blue",
+      viridis(137, direction = -1)[125:255]
+    )
+  ) +  # Adjust colors as needed
+  labs(title = "Ranking Comparison Visualization", x = "Ranking Type", y = "Ranking") +
+  theme_minimal() +
+  scale_y_reverse() +
+  guides(fill = guide_colourbar(reverse = TRUE, title = "Ranking"))
+```
 
 Researching Ethiopia and Laos Changes
 ```{r}
+#Ethiopia
+# Filter the relevant years for ethiopia
 ethiopia <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-laos<- age_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+ethiopia$YEAR_CALENDAR <- as.numeric(ethiopia$YEAR_CALENDAR)
 
-laos$LAO[is.na(laos$LAO)] <- 0
-
-# Convert the Year column to numeric
-laos$Year <- as.numeric(laos$Year)
-
-# Create a new column for the year group (2010-2012 and 2020-2022)
-laos <- laos %>%
+ethiopia <- ethiopia %>%
   mutate(Year_Group = case_when(
-    between(Year, 2010, 2012) ~ "2010-2012",
-    between(Year, 2020, 2022) ~ "2020-2022"
+    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
+    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
   ))
 
-# Group by age_group and Year_Group, calculate the average LAO, and arrange the result
-result <- laos %>%
+ethiopia <- ethiopia %>%
+  group_by(age_group, Year_Group) %>%
+  summarise(Avg_ETH = mean(ETH, na.rm = TRUE)) %>%
+  arrange(age_group, Year_Group)
+
+ggplot(ethiopia, aes(x = age_group, y = Avg_ETH, fill = Year_Group)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
+  labs(title = "Average LS by Age Group and Year Group in Ethiopia", x = "Age Group", y = "Average LS") +
+  scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
+  theme_minimal()
+
+#Laos
+laos <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+laos$YEAR_CALENDAR <- as.numeric(laos$YEAR_CALENDAR)
+
+laos <- laos %>%
+  mutate(Year_Group = case_when(
+    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
+    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
+  ))
+
+laos <- laos %>%
   group_by(age_group, Year_Group) %>%
   summarise(Avg_LAO = mean(LAO, na.rm = TRUE)) %>%
   arrange(age_group, Year_Group)
+
+ggplot(laos, aes(x = age_group, y = Avg_LAO, fill = Year_Group)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
+  labs(title = "Average LS by Age Group and Year Group in Laos", x = "Age Group", y = "Average LS") +
+  scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
+  theme_minimal()
 ```
 
+
+
+```{r}
+age_n_matrix <- gallup_main %>%
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  summarise(n = n()) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>%
+  arrange(YEAR_CALENDAR, age_group)
+
+ethiopia_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+ethiopia <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+ethiopia$YEAR_CALENDAR <- as.numeric(ethiopia$YEAR_CALENDAR)
+
+ethiopia = merge(ethiopia, ethiopia_n, by=c("YEAR_CALENDAR", "age_group"))
+
+ethiopia <- ethiopia %>%
+  mutate(Year_Group = case_when(
+    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
+    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
+  ))
+
+# Calculate the weighted average
+ethiopia <- ethiopia %>%
+  group_by(age_group, Year_Group) %>%
+  summarise(Avg_LS = weighted.mean(ETH.x, w = ETH.y, na.rm = TRUE)) %>%
+  arrange(Year_Group, age_group)
+
+ggplot(ethiopia, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
+  labs(title = "Average LS by Age Group and Year Group in Ethiopia", x = "Age Group", y = "Average LS") +
+  scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
+  theme_minimal()
+```
+```{r}
+laos <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+laos$YEAR_CALENDAR <- as.numeric(laos$YEAR_CALENDAR)
+
+laos_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+laos = merge(laos, laos_n, by=c("YEAR_CALENDAR", "age_group"))
+
+laos <- laos %>%
+  mutate(Year_Group = case_when(
+    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
+    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
+  ))
+
+# Calculate the weighted average
+laos <- laos %>%
+  group_by(age_group, Year_Group) %>%
+  summarise(Avg_LS = weighted.mean(LAO.x, w = LAO.y, na.rm = TRUE)) %>%
+  arrange(Year_Group, age_group)
+
+ggplot(laos, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
+  labs(title = "Average LS by Age Group and Year Group in Laos", x = "Age Group", y = "Average LS") +
+  scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
+  theme_minimal()
+```
+
+Ethiopia has decreasing WHR and increasing AS. 
+
+2013: Increasing LS as age goes up, but there are few old people.
+2023: Inverse U-shape, more old people. 
+
+In both years, majority are young, so decrease in happiness of young people lead to decrease in WHR.
+However, When you standardize such that the weight of young people is smaller,
+the increase in middle age people is weighed more heavily and thus AS increases. 
+
+
+
+Laos has increasing WHR and decreasing AS. 
+
+2013: U-shape with high LS in youngest.
+2023: Decreasing steadily but more mild.
+
+WHR increases as Laos has seen LS increase in 4 of 5 age groups. 
+However, the drop in the LS of the youngest group is large, so when standardized,
