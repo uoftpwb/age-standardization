@@ -535,12 +535,28 @@ names(standardized_contributions_1)[names(standardized_contributions_1) == 'stan
   'Country'
 standardized_contributions_1$Rank <- rank(-standardized_contributions_1$Life.Ladder)
 
-standardized_contributions_1 <- merge(standardized_contributions_1, gallup_main %>% 
+gallup_main_1 <- gallup_main %>% 
   filter(age_group == "15-29",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3) %>%
-  summarize(n = n()), by="COUNTRY_ISO3")
+  group_by(COUNTRYNEW) %>%
+  summarize(n = n())
+
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Bosnia Herzegovina"] <- "Bosnia and Herzegovina"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Congo Brazzaville"] <- "Congo (Brazzaville)"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Congo Kinshasa"] <- "Congo (Kinshasa)"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Czech Republic"] <- "Czechia"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Hong Kong"] <- "Hong Kong S.A.R. of China"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Kuwait"] <- "Kuwait"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Lesotho"] <- "Lesotho"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Libya"] <- "Libya"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Northern Cyprus"] <- "North Cyprus"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Palestine"] <- "State of Palestine"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Puerto Rico"] <- "Puerto Rico"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Taiwan"] <- "Taiwan Province of China"
+gallup_main_1$COUNTRYNEW[gallup_main_1$COUNTRYNEW == "Turkey"] <- "Turkiye"
+
+standardized_contributions_1 <- merge(standardized_contributions_1, gallup_main_1, by.x="standardized_contributions_1", by.y="COUNTRYNEW")
 ```
 
 Group 2: 30-44
@@ -624,12 +640,28 @@ names(standardized_contributions_2)[names(standardized_contributions_2) == 'stan
   'Country'
 standardized_contributions_2$Rank <- rank(-standardized_contributions_2$Life.Ladder)
 
-standardized_contributions_2 <- merge(standardized_contributions_2, gallup_main %>% 
+gallup_main_2 <- gallup_main %>% 
   filter(age_group == "30-44",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3) %>%
-  summarize(n = n()), by="COUNTRY_ISO3")
+  group_by(COUNTRYNEW) %>%
+  summarize(n = n())
+
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Bosnia Herzegovina"] <- "Bosnia and Herzegovina"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Congo Brazzaville"] <- "Congo (Brazzaville)"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Congo Kinshasa"] <- "Congo (Kinshasa)"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Czech Republic"] <- "Czechia"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Hong Kong"] <- "Hong Kong S.A.R. of China"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Kuwait"] <- "Kuwait"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Lesotho"] <- "Lesotho"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Libya"] <- "Libya"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Northern Cyprus"] <- "North Cyprus"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Palestine"] <- "State of Palestine"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Puerto Rico"] <- "Puerto Rico"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Taiwan"] <- "Taiwan Province of China"
+gallup_main_2$COUNTRYNEW[gallup_main_2$COUNTRYNEW == "Turkey"] <- "Turkiye"
+
+standardized_contributions_2 <- merge(standardized_contributions_2, gallup_main_2, by.x="standardized_contributions_2", by.y="COUNTRYNEW")
 ```
 
 Group 3: 45-59
@@ -713,12 +745,30 @@ names(standardized_contributions_3)[names(standardized_contributions_3) == 'stan
   'Country'
 standardized_contributions_3$Rank <- rank(-standardized_contributions_3$Life.Ladder)
 
-standardized_contributions_3 <- merge(standardized_contributions_3, gallup_main %>% 
+gallup_main_3 <- gallup_main %>% 
   filter(age_group == "45-59",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3) %>%
-  summarize(n = n()), by="COUNTRY_ISO3")
+  group_by(COUNTRYNEW) %>%
+  summarize(n = n())
+
+# Manual mappings for gallup_main_3
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Bosnia Herzegovina"] <- "Bosnia and Herzegovina"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Congo Brazzaville"] <- "Congo (Brazzaville)"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Congo Kinshasa"] <- "Congo (Kinshasa)"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Czech Republic"] <- "Czechia"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Hong Kong"] <- "Hong Kong S.A.R. of China"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Kuwait"] <- "Kuwait"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Lesotho"] <- "Lesotho"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Libya"] <- "Libya"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Northern Cyprus"] <- "North Cyprus"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Palestine"] <- "State of Palestine"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Puerto Rico"] <- "Puerto Rico"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Taiwan"] <- "Taiwan Province of China"
+gallup_main_3$COUNTRYNEW[gallup_main_3$COUNTRYNEW == "Turkey"] <- "Turkiye"
+
+# Merge with standardized_contributions_3
+standardized_contributions_3 <- merge(standardized_contributions_3, gallup_main_3, by.x="standardized_contributions_3", by.y="COUNTRYNEW")
 ```
 
 Group 4: 60-74
@@ -802,12 +852,32 @@ names(standardized_contributions_4)[names(standardized_contributions_4) == 'stan
   'Country'
 standardized_contributions_4$Rank <- rank(-standardized_contributions_4$Life.Ladder)
 
-standardized_contributions_4 <- merge(standardized_contributions_4, gallup_main %>% 
+# Filter and summarize for gallup_main_4
+gallup_main_4 <- gallup_main %>% 
   filter(age_group == "60-74",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3) %>%
-  summarize(n = n()), by="COUNTRY_ISO3")
+  group_by(COUNTRYNEW) %>%
+  summarize(n = n())
+
+# Manual mappings for gallup_main_4
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Bosnia Herzegovina"] <- "Bosnia and Herzegovina"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Congo Brazzaville"] <- "Congo (Brazzaville)"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Congo Kinshasa"] <- "Congo (Kinshasa)"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Czech Republic"] <- "Czechia"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Hong Kong"] <- "Hong Kong S.A.R. of China"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Kuwait"] <- "Kuwait"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Lesotho"] <- "Lesotho"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Libya"] <- "Libya"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Northern Cyprus"] <- "North Cyprus"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Palestine"] <- "State of Palestine"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Puerto Rico"] <- "Puerto Rico"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Taiwan"] <- "Taiwan Province of China"
+gallup_main_4$COUNTRYNEW[gallup_main_4$COUNTRYNEW == "Turkey"] <- "Turkiye"
+
+# Merge with standardized_contributions_4
+standardized_contributions_4 <- merge(standardized_contributions_4, gallup_main_4, by.x="standardized_contributions_4", by.y="COUNTRYNEW")
+
 ```
 
 Group 5: Over 74
@@ -858,8 +928,6 @@ age_standardized_ranking_5$Country.name[age_standardized_ranking_5$Country.name=
 age_standardized_ranking_5$Country.name[age_standardized_ranking_5$Country.name=="Turkey"] <- "Turkiye"
 age_standardized_ranking_5$Country.name[age_standardized_ranking_5$Country.name=="Palestinian Territories"] <- "State of Palestine"
 
-# TEMPORARY: Impute Saudi Arabia with value from age group 4
-age_standardized_ranking_5 <- rbind(age_standardized_ranking_5, c("SAU", 6.522103, "Saudi Arabia"))
 standardized_WHR_summary_5  <- merge(WHR_summary, age_standardized_ranking_5, by="Country.name")
 
 # Create Dystopia for the age-standardized summary data. This should be the same as non-age-standardized summary
@@ -894,12 +962,32 @@ names(standardized_contributions_5)[names(standardized_contributions_5) == 'stan
   'Country'
 standardized_contributions_5$Rank <- rank(-standardized_contributions_5$Life.Ladder)
 
-standardized_contributions_5 <- merge(standardized_contributions_5, gallup_main %>% 
+# Filter and summarize for gallup_main_5
+gallup_main_5 <- gallup_main %>% 
   filter(age_group == "Over 75",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3) %>%
-  summarize(n = n()), by="COUNTRY_ISO3")
+  group_by(COUNTRYNEW) %>%
+  summarize(n = n())
+
+# Manual mappings for gallup_main_5
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Bosnia Herzegovina"] <- "Bosnia and Herzegovina"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Congo Brazzaville"] <- "Congo (Brazzaville)"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Congo Kinshasa"] <- "Congo (Kinshasa)"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Czech Republic"] <- "Czechia"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Hong Kong"] <- "Hong Kong S.A.R. of China"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Kuwait"] <- "Kuwait"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Lesotho"] <- "Lesotho"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Libya"] <- "Libya"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Northern Cyprus"] <- "North Cyprus"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Palestine"] <- "State of Palestine"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Puerto Rico"] <- "Puerto Rico"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Taiwan"] <- "Taiwan Province of China"
+gallup_main_5$COUNTRYNEW[gallup_main_5$COUNTRYNEW == "Turkey"] <- "Turkiye"
+
+# Merge with standardized_contributions_5
+standardized_contributions_5 <- merge(standardized_contributions_5, gallup_main_5, by.x="standardized_contributions_5", by.y="COUNTRYNEW")
+
 ```
 
 **Further Analysis**
@@ -1606,6 +1694,7 @@ rd5 <- mean(abs(standardized_contributions_5$rank_difference))
 sd5 <- mean(abs(standardized_contributions_5$score_difference))
 
 
+
 significant_changes_in_rank_5 <- standardized_contributions_5 %>% 
   filter(abs(rank_difference) >= 10) %>% 
   dplyr::select(COUNTRY_ISO3, standardized_contributions_5, WHR_score, Life.Ladder, rank_difference, score_difference)
@@ -1649,21 +1738,53 @@ ranking_comparisons_summary <- ranking_comparisons %>%
 
 Visualizing Ranking Changes
 ```{r}
-a <- ranking_comparisons %>% 
+ranking_comparison_wide <- ranking_comparisons %>% 
   dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG5_rank)
+ranking_comparison_wide <- ranking_comparison_wide[order(ranking_comparison_wide$WHR_rank), ]
+b <- ranking_comparison_wide[,3:6]
+b_WHR <- b[,1]
+b$WHR2 <- b_WHR
 
-color_scale <- scales::col_numeric(palette = "viridis", domain = range(a$WHR_rank))
+colnames(b) <- c("WHR", "Age-Standardized", "Age Group 1", "Age Group 5", "WHR2")
 
-long_data <- tidyr::gather(a, key = "Ranking", value = "Value", -COUNTRY_ISO3, -COUNTRYNAME)
-long_data$COUNTRY_ISO3 <- reorder(long_data$COUNTRY_ISO3, long_data$Value)
+head(b)
 
-# Plot the heatmap
-ggplot(long_data, aes(x = COUNTRY_ISO3, y = Ranking, fill = Value)) +
+melted_df <- reshape2::melt(b, id.vars = "WHR2")
+
+# Create a ggplot tile plot
+ggplot(melted_df, aes(x = variable, y = WHR2, fill = value)) +
   geom_tile() +
-  scale_fill_viridis() +  # Use the same color scale for all ranks
+  scale_fill_viridis(direction=-1, name = "Ranking") +  # Use viridis color scale
+  labs(title = "Ranking Comparison Visualization", x = "Ranking Type", y = "Ranking") +
   theme_minimal() +
-  labs(title = "Comparison of Ranks",
-       x = "Country",
-       y = "Ranking",
-       fill = "WHR_rank")
+  scale_y_reverse() +
+  guides(fill = guide_colourbar(reverse = TRUE))
 ```
+
+Researching Ethiopia and Laos Changes
+```{r}
+ethiopia <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+laos<- age_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
+  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+
+laos$LAO[is.na(laos$LAO)] <- 0
+
+# Convert the Year column to numeric
+laos$Year <- as.numeric(laos$Year)
+
+# Create a new column for the year group (2010-2012 and 2020-2022)
+laos <- laos %>%
+  mutate(Year_Group = case_when(
+    between(Year, 2010, 2012) ~ "2010-2012",
+    between(Year, 2020, 2022) ~ "2020-2022"
+  ))
+
+# Group by age_group and Year_Group, calculate the average LAO, and arrange the result
+result <- laos %>%
+  group_by(age_group, Year_Group) %>%
+  summarise(Avg_LAO = mean(LAO, na.rm = TRUE)) %>%
+  arrange(age_group, Year_Group)
+```
+
