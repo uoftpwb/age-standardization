@@ -214,7 +214,7 @@ gallup_main <- readRDS(
 gallup_main$Weighted.LS <- as.numeric(gallup_main$WGT*gallup_main$WP16)
 
 gallup_main <- gallup_main %>% 
-  filter(!is.na(WP1220)) %>% 
+  #filter(!is.na(WP1220)) %>% 
   #group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>% 
   mutate(
     age_group = case_when(
@@ -235,15 +235,19 @@ standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441,
                               0.1203791469, 0.04150304671)
 
 gallup_age_2020 <- gallup_main %>% 
-  filter(YEAR_CALENDAR == 2020) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-gallup_age_2020[is.na(gallup_age_2020)] = 0
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2020) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+gallup_age_2020 <- gallup_age_2020[, 2:ncol(gallup_age_2020)]
 countries_2020 <- colnames(gallup_age_2020)[2:108]
 age_standardized_ranking_2020 <- gallup_age_2020 %>%
   summarise(across(all_of(countries_2020), 
-                   list(ASLS = ~ weighted.mean(., standard_population))))
+                   list(ASLS = ~ weighted.mean(., standard_population, na.rm=T))))
 age_standardized_ranking_2020 <- pivot_longer(age_standardized_ranking_2020, 
                                            cols = everything(),
                                            names_to = "COUNTRY_ISO3", 
@@ -251,22 +255,27 @@ age_standardized_ranking_2020 <- pivot_longer(age_standardized_ranking_2020,
 age_standardized_ranking_2020$COUNTRY_ISO3 <- gsub(
   '_ASLS', '', age_standardized_ranking_2020$COUNTRY_ISO3)
 n_2020 <- gallup_main %>% 
-  drop_na(Weighted.LS) %>% 
+    filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>%  
   filter(YEAR_CALENDAR == 2020) %>% 
   group_by(COUNTRY_ISO3) %>% 
   summarize(n_2020 = n()) 
 age_standardized_ranking_2020 <- merge(age_standardized_ranking_2020, n_2020)
 
 gallup_age_2021 <- gallup_main %>% 
-  filter(YEAR_CALENDAR == 2021) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-gallup_age_2021[is.na(gallup_age_2021)] = 0
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2021) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+gallup_age_2021 <- gallup_age_2021[, 2:ncol(gallup_age_2021)]
 countries_2021 <- colnames(gallup_age_2021)[2:121]
 age_standardized_ranking_2021 <- gallup_age_2021 %>%
   summarise(across(all_of(countries_2021), 
-                   list(ASLS = ~ weighted.mean(., standard_population))))
+                   list(ASLS = ~ weighted.mean(., standard_population, na.rm=T))))
 age_standardized_ranking_2021 <- pivot_longer(age_standardized_ranking_2021, 
                                            cols = everything(),
                                            names_to = "COUNTRY_ISO3", 
@@ -274,22 +283,27 @@ age_standardized_ranking_2021 <- pivot_longer(age_standardized_ranking_2021,
 age_standardized_ranking_2021$COUNTRY_ISO3 <- gsub(
   '_ASLS', '', age_standardized_ranking_2021$COUNTRY_ISO3)
 n_2021 <- gallup_main %>% 
-  drop_na(Weighted.LS) %>% 
+    filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>%  
   filter(YEAR_CALENDAR == 2021) %>% 
   group_by(COUNTRY_ISO3) %>% 
   summarize(n_2021 = n()) 
 age_standardized_ranking_2021 <- merge(age_standardized_ranking_2021, n_2021)
 
 gallup_age_2022 <- gallup_main %>% 
-  filter(YEAR_CALENDAR == 2022) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-gallup_age_2022[is.na(gallup_age_2022)] = 0
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2022) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+gallup_age_2022 <- gallup_age_2022[, 2:ncol(gallup_age_2022)]
 countries_2022 <- colnames(gallup_age_2022)[2:140]
 age_standardized_ranking_2022 <- gallup_age_2022 %>%
   summarise(across(all_of(countries_2022), 
-                   list(ASLS = ~ weighted.mean(., standard_population))))
+                   list(ASLS = ~ weighted.mean(., standard_population, na.rm=T))))
 age_standardized_ranking_2022 <- pivot_longer(age_standardized_ranking_2022, 
                                            cols = everything(),
                                            names_to = "COUNTRY_ISO3", 
@@ -297,7 +311,8 @@ age_standardized_ranking_2022 <- pivot_longer(age_standardized_ranking_2022,
 age_standardized_ranking_2022$COUNTRY_ISO3 <- gsub(
   '_ASLS', '', age_standardized_ranking_2022$COUNTRY_ISO3)
 n_2022 <- gallup_main %>% 
-  drop_na(Weighted.LS) %>% 
+    filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
   filter(YEAR_CALENDAR == 2022) %>% 
   group_by(COUNTRY_ISO3) %>% 
   summarize(n_2022 = n()) 
@@ -370,10 +385,19 @@ WHR_AS_comparison$score_difference <- (WHR_AS_comparison$AS_score -
 Merging Data for Regression Analysis
 ```{r}
 # age_matrix contains life satisfaction for each age group in each country-year
+#age_matrix <- gallup_main %>%
+#  filter(!is.na(age_group)) %>% 
+#  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+#  summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
+#  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+#  arrange(YEAR_CALENDAR, age_group) 
+
+#Old version of age_matrix
 age_matrix <- gallup_main %>%
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
   group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
-  #summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
-  summarise(WeightedMeanLS = mean(Weighted.LS, na.rm=T)) %>%
+  summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
   arrange(YEAR_CALENDAR, age_group)
 
@@ -1294,86 +1318,111 @@ var.test(WHR_AS_comparison$WHR_score, WHR_AS_comparison$AS_score, alternative = 
 Gini(WHR_AS_comparison$WHR_score, conf.level = 0.95)
 Gini(WHR_AS_comparison$AS_score, conf.level = 0.95)
 ```
+```{r}
+values <- c(1, 2, NA, 0, 4)
+weights <- c(0.1, 0.2, 0.3, 0.4, 0.0)
+
+result_with_na_rm <- weighted.mean(values, weights, na.rm = TRUE)
+result_without_na_rm <- weighted.mean(values, weights, na.rm = FALSE)
+
+print(result_with_na_rm)
+print(result_without_na_rm)
+```
 
 Ranking for 2013
 ```{r}
 gallup_age_2010 <- gallup_main %>% 
-  filter(YEAR_CALENDAR == 2010) %>% 
-  group_by(COUNTRYNEW, age_group, .drop = FALSE) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRYNEW, values_from = WeightedMeanLS)
-gallup_age_2010[is.na(gallup_age_2010)] = 0
-countries_2010 <- colnames(gallup_age_2010)[2:125]
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2010) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+gallup_age_2010 <- gallup_age_2010[, 2:ncol(gallup_age_2010)]
+countries_2010 <- colnames(gallup_age_2010)[2:ncol(gallup_age_2010)]
 age_standardized_ranking_2010 <- gallup_age_2010 %>%
   summarise(across(all_of(countries_2010), 
-                   list(ASLS = ~ weighted.mean(., standard_population))))
+                   list(ASLS = ~ weighted.mean(., standard_population, na.rm=T))))
 age_standardized_ranking_2010 <- pivot_longer(age_standardized_ranking_2010, 
                                            cols = everything(),
-                                           names_to = "COUNTRYNEW", 
+                                           names_to = "COUNTRY_ISO3", 
                                            values_to = "AS_score_2010")
-age_standardized_ranking_2010$COUNTRYNEW <- gsub(
-  '_ASLS', '', age_standardized_ranking_2010$COUNTRYNEW)
+age_standardized_ranking_2010$COUNTRY_ISO3 <- gsub(
+  '_ASLS', '', age_standardized_ranking_2010$COUNTRY_ISO3)
 n_2010 <- gallup_main %>% 
-  drop_na(Weighted.LS) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>%  
   filter(YEAR_CALENDAR == 2010) %>% 
-  group_by(COUNTRYNEW) %>% 
+  group_by(COUNTRY_ISO3) %>% 
   summarize(n_2010 = n()) 
 age_standardized_ranking_2010 <- merge(age_standardized_ranking_2010, n_2010)
 
 gallup_age_2011 <- gallup_main %>% 
-  filter(YEAR_CALENDAR == 2011) %>% 
-  group_by(COUNTRYNEW, age_group, .drop = FALSE) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRYNEW, values_from = WeightedMeanLS)
-gallup_age_2011[is.na(gallup_age_2011)] = 0
-countries_2011 <- colnames(gallup_age_2011)[2:149]
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2011) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+gallup_age_2011 <- gallup_age_2011[, 2:ncol(gallup_age_2011)]
+countries_2011 <- colnames(gallup_age_2011)[2:ncol(gallup_age_2011)]
 age_standardized_ranking_2011 <- gallup_age_2011 %>%
   summarise(across(all_of(countries_2011), 
-                   list(ASLS = ~ weighted.mean(., standard_population))))
+                   list(ASLS = ~ weighted.mean(., standard_population, na.rm=T))))
 age_standardized_ranking_2011 <- pivot_longer(age_standardized_ranking_2011, 
                                            cols = everything(),
-                                           names_to = "COUNTRYNEW", 
+                                           names_to = "COUNTRY_ISO3", 
                                            values_to = "AS_score_2011")
-age_standardized_ranking_2011$COUNTRYNEW <- gsub(
-  '_ASLS', '', age_standardized_ranking_2011$COUNTRYNEW)
+age_standardized_ranking_2011$COUNTRY_ISO3 <- gsub(
+  '_ASLS', '', age_standardized_ranking_2011$COUNTRY_ISO3)
 n_2011 <- gallup_main %>% 
-  drop_na(Weighted.LS) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
   filter(YEAR_CALENDAR == 2011) %>% 
-  group_by(COUNTRYNEW) %>% 
+  group_by(COUNTRY_ISO3) %>% 
   summarize(n_2011 = n()) 
 age_standardized_ranking_2011 <- merge(age_standardized_ranking_2011, n_2011)
 
 gallup_age_2012 <- gallup_main %>% 
-  filter(YEAR_CALENDAR == 2012) %>% 
-  group_by(COUNTRYNEW, age_group, .drop = FALSE) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRYNEW, values_from = WeightedMeanLS)
-gallup_age_2012[is.na(gallup_age_2012)] = 0
-countries_2012 <- colnames(gallup_age_2012)[2:143]
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2012) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+gallup_age_2012 <- gallup_age_2012[, 2:ncol(gallup_age_2012)]
+countries_2012 <- colnames(gallup_age_2012)[2:ncol(gallup_age_2012)]
 age_standardized_ranking_2012 <- gallup_age_2012 %>%
   summarise(across(all_of(countries_2012), 
-                   list(ASLS = ~ weighted.mean(., standard_population))))
+                   list(ASLS = ~ weighted.mean(., standard_population, na.rm=T))))
 age_standardized_ranking_2012 <- pivot_longer(age_standardized_ranking_2012, 
                                            cols = everything(),
-                                           names_to = "COUNTRYNEW", 
+                                           names_to = "COUNTRY_ISO3", 
                                            values_to = "AS_score_2012")
-age_standardized_ranking_2012$COUNTRYNEW <- gsub(
-  '_ASLS', '', age_standardized_ranking_2012$COUNTRYNEW)
+age_standardized_ranking_2012$COUNTRY_ISO3 <- gsub(
+  '_ASLS', '', age_standardized_ranking_2012$COUNTRY_ISO3)
 n_2012 <- gallup_main %>% 
-  drop_na(Weighted.LS) %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
   filter(YEAR_CALENDAR == 2012) %>% 
-  group_by(COUNTRYNEW) %>% 
+  group_by(COUNTRY_ISO3) %>% 
   summarize(n_2012 = n()) 
 age_standardized_ranking_2012 <- merge(age_standardized_ranking_2012, n_2012)
 
-age_ranking_2010_2011 <- merge(x = age_standardized_ranking_2010, y = age_standardized_ranking_2011, by = "COUNTRYNEW", all = TRUE)
-age_standardized_ranking_2013 <- merge(x = age_ranking_2010_2011, y = age_standardized_ranking_2012, by = "COUNTRYNEW", all = TRUE)
+age_ranking_2010_2011 <- merge(x = age_standardized_ranking_2010, y = age_standardized_ranking_2011, by = "COUNTRY_ISO3", all = TRUE)
+age_standardized_ranking_2013 <- merge(x = age_ranking_2010_2011, y = age_standardized_ranking_2012, by = "COUNTRY_ISO3", all = TRUE)
 age_standardized_ranking_2013[is.na(age_standardized_ranking_2013)] <- 0
 
 age_standardized_ranking_2013 <- age_standardized_ranking_2013 %>% 
   mutate(AS_score = (AS_score_2010*n_2010 + AS_score_2011*n_2011 + AS_score_2012*n_2012)/(n_2010+n_2011+n_2012))
 age_standardized_ranking_2013 <- age_standardized_ranking_2013 %>% 
-  dplyr::select(Country = COUNTRYNEW, AS_score)
+  dplyr::select(Country = COUNTRY_ISO3, AS_score)
 
 WHR_data_2013 <- read.table(header=TRUE, text=
 "Country Region Ladder Social_support Freedom Corruption Donation Generosity Positive_affect Negative_affect Happiness_yesterday GDP_per_capita Healthy_life_expectancy
@@ -1566,18 +1615,19 @@ WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "Kosovo"] <- "XKX"
 WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "Somaliland"] <- "XS"
 WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "South_Korea"] <- "KOR"
 
-WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013)
+WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013, by.x="COUNTRY_ISO3", by.y="Country")
 
-comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by.x="region", by.y="Country")
+comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by.x="COUNTRY_ISO3", by.y="COUNTRY_ISO3")
 notable_countries <- comparison_2013_2023 %>% 
   filter(WHR_score > Ladder & AS_score.x < AS_score.y |
          WHR_score < Ladder & AS_score.x > AS_score.y) %>% 
-  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3.x, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
+  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
 
 notable_countries <- notable_countries %>% 
   mutate(WHR_diff = WHR_2023 - WHR_2013,
          AS_diff = AS_2023 - AS_2013,
-         diff_of_diff = WHR_diff - AS_diff)
+         diff_of_diff = WHR_diff - AS_diff) %>% 
+  filter(COUNTRY_ISO3 != "CYP")
 ```
 
 Summarizing Changing from WHR to AS
@@ -1740,29 +1790,6 @@ ranking_comparisons_summary <- ranking_comparisons %>%
 Visualizing Ranking Changes
 ```{r}
 ranking_comparison_wide <- ranking_comparisons %>% 
-  dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG5_rank)
-ranking_comparison_wide <- ranking_comparison_wide[order(ranking_comparison_wide$WHR_rank), ]
-b <- ranking_comparison_wide[,3:6]
-b_WHR <- b[,1]
-b$WHR2 <- b_WHR
-
-colnames(b) <- c("WHR", "Age-Standardized", "Age Group 1", "Age Group 5", "WHR2")
-
-head(b)
-
-melted_df <- reshape2::melt(b, id.vars = "WHR2")
-
-# Create a ggplot tile plot
-ggplot(melted_df, aes(x = variable, y = WHR2, fill = value)) +
-  geom_tile() +
-  scale_fill_viridis(direction=-1, name = "Ranking") +  # Use viridis color scale
-  labs(title = "Ranking Comparison Visualization", x = "Ranking Type", y = "Ranking") +
-  theme_minimal() +
-  scale_y_reverse() +
-  guides(fill = guide_colourbar(reverse = TRUE))
-```
-```{r}
-ranking_comparison_wide <- ranking_comparisons %>% 
   dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG4_rank)
 ranking_comparison_wide <- ranking_comparison_wide[order(ranking_comparison_wide$WHR_rank), ]
 
@@ -1798,11 +1825,11 @@ ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   geom_tile() +
   scale_fill_manual(
     values = c(
-      viridis(137, direction = -1)[1:89],
+      viridis(137, direction = -1)[1:42],
       "red",
-      viridis(137, direction = -1)[91:123],
+      viridis(137, direction = -1)[44:49],
       "blue",
-      viridis(137, direction = -1)[125:255]
+      viridis(137, direction = -1)[51:137]
     )
   ) +  # Adjust colors as needed
   labs(title = "Ranking Comparison Visualization", x = "Ranking Type", y = "Ranking") +
@@ -1811,138 +1838,98 @@ ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   guides(fill = guide_colourbar(reverse = TRUE, title = "Ranking"))
 ```
 
-Researching Ethiopia and Laos Changes
-```{r}
-#Ethiopia
-# Filter the relevant years for ethiopia
-ethiopia <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
-
-ethiopia$YEAR_CALENDAR <- as.numeric(ethiopia$YEAR_CALENDAR)
-
-ethiopia <- ethiopia %>%
-  mutate(Year_Group = case_when(
-    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
-    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
-  ))
-
-ethiopia <- ethiopia %>%
-  group_by(age_group, Year_Group) %>%
-  summarise(Avg_ETH = mean(ETH, na.rm = TRUE)) %>%
-  arrange(age_group, Year_Group)
-
-ggplot(ethiopia, aes(x = age_group, y = Avg_ETH, fill = Year_Group)) +
-  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
-  labs(title = "Average LS by Age Group and Year Group in Ethiopia", x = "Age Group", y = "Average LS") +
-  scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
-  theme_minimal()
-
-#Laos
-laos <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
-
-laos$YEAR_CALENDAR <- as.numeric(laos$YEAR_CALENDAR)
-
-laos <- laos %>%
-  mutate(Year_Group = case_when(
-    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
-    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
-  ))
-
-laos <- laos %>%
-  group_by(age_group, Year_Group) %>%
-  summarise(Avg_LAO = mean(LAO, na.rm = TRUE)) %>%
-  arrange(age_group, Year_Group)
-
-ggplot(laos, aes(x = age_group, y = Avg_LAO, fill = Year_Group)) +
-  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
-  labs(title = "Average LS by Age Group and Year Group in Laos", x = "Age Group", y = "Average LS") +
-  scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
-  theme_minimal()
-```
-
-
-
+Researching Saudi Arabia and Iceland
 ```{r}
 age_n_matrix <- gallup_main %>%
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
   group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(n = n()) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>%
   arrange(YEAR_CALENDAR, age_group)
 
-ethiopia_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
+egypt_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "EGY") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-ethiopia <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ETH") %>% 
+egypt <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "EGY") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-ethiopia$YEAR_CALENDAR <- as.numeric(ethiopia$YEAR_CALENDAR)
+egypt = merge(egypt, egypt_n, by=c("YEAR_CALENDAR", "age_group"))
 
-ethiopia = merge(ethiopia, ethiopia_n, by=c("YEAR_CALENDAR", "age_group"))
-
-ethiopia <- ethiopia %>%
+egypt <- egypt %>%
   mutate(Year_Group = case_when(
     between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
     between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
   ))
 
 # Calculate the weighted average
-ethiopia <- ethiopia %>%
-  group_by(age_group, Year_Group) %>%
-  summarise(Avg_LS = weighted.mean(ETH.x, w = ETH.y, na.rm = TRUE)) %>%
+egypt <- egypt %>%
+  group_by(age_group, Year_Group) %>% 
+  summarise(Avg_LS = sum((EGY.x)*(EGY.y), na.rm=T) / sum(EGY.y, na.rm=T)) %>%
   arrange(Year_Group, age_group)
 
-ggplot(ethiopia, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
+ggplot(egypt, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
-  labs(title = "Average LS by Age Group and Year Group in Ethiopia", x = "Age Group", y = "Average LS") +
+  labs(title = "Average LS by Age Group and Year Group in Egypt", x = "Age Group", y = "Average LS") +
   scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
   theme_minimal()
 ```
+
+
 ```{r}
-laos <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
+iceland <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ISL") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-laos$YEAR_CALENDAR <- as.numeric(laos$YEAR_CALENDAR)
-
-laos_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "LAO") %>% 
+iceland_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "ISL") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-laos = merge(laos, laos_n, by=c("YEAR_CALENDAR", "age_group"))
+iceland = merge(iceland, iceland_n, by=c("YEAR_CALENDAR", "age_group"))
 
-laos <- laos %>%
+iceland <- iceland %>%
   mutate(Year_Group = case_when(
     between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
     between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
   ))
 
 # Calculate the weighted average
-laos <- laos %>%
+iceland <- iceland %>%
   group_by(age_group, Year_Group) %>%
-  summarise(Avg_LS = weighted.mean(LAO.x, w = LAO.y, na.rm = TRUE)) %>%
+  summarise(Avg_LS = sum((ISL.x)*(ISL.y), na.rm=T) / sum(ISL.y, na.rm=T)) %>%
   arrange(Year_Group, age_group)
 
-ggplot(laos, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
+ggplot(iceland, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
-  labs(title = "Average LS by Age Group and Year Group in Laos", x = "Age Group", y = "Average LS") +
+  labs(title = "Average LS by Age Group and Year Group in Iceland", x = "Age Group", y = "Average LS") +
   scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
   theme_minimal()
 ```
 
-Ethiopia has decreasing WHR and increasing AS. 
+```{r}
+gallup_main %>%
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group)
 
-2013: Increasing LS as age goes up, but there are few old people.
-2023: Inverse U-shape, more old people. 
+test <- gallup_main %>% 
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2020) %>%
+  select(which(colSums(is.na(.)) < nrow(.)))
+test <- test[, 2:ncol(test)]
 
-In both years, majority are young, so decrease in happiness of young people lead to decrease in WHR.
-However, When you standardize such that the weight of young people is smaller,
-the increase in middle age people is weighed more heavily and thus AS increases. 
 
+#gallup_age_2020 <- gallup_main %>% 
+  filter(!is.na(age_group)) %>% 
+  filter(YEAR_CALENDAR == 2020) %>% 
+  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+  summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
+```
 
-
-Laos has increasing WHR and decreasing AS. 
-
-2013: U-shape with high LS in youngest.
-2023: Decreasing steadily but more mild.
-
-WHR increases as Laos has seen LS increase in 4 of 5 age groups. 
-However, the drop in the LS of the youngest group is large, so when standardized,
