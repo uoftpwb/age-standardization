@@ -27,8 +27,7 @@ library(maps)
 library(viridis)
 library(multcomp)
 
-# Set working directory to the parent directory of the current directory this file is in
-setwd(dirname(dirname(dirname(rstudioapi::getActiveDocumentContext()$path))))
+knitr::opts_knit$set(root.dir = dirname(dirname(rstudioapi::getActiveDocumentContext()$path)))
 ```
 
 **Replicating World Happiness Report 2023, Chapter 2**
@@ -39,10 +38,10 @@ In order to accomplish this we need to backwards engineer the exact code require
 
 ### Reading WHR Data
 ```{r}
-
-# Load the World Happiness Report data from the CSV file
-WHR_data_across_years <- read.csv("Data/WHR2023Table.csv")
-
+# Set working directory to the parent directory of the current directory this file is in, then load the World Happiness Report data from the CSV file
+WHR_data_across_years <- read.csv("Data/WHR2023Table.csv") %>%  
+  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
+  
 # Create a summary of life ladder and raw data for predictors, using weighted mean
 # Filter the data for the years 2020 to 2022, group the data by country name, and calculate the weighted mean for each predictor, removing NA values
 WHR_summary <- WHR_data_across_years %>% filter(year >= 2020, year <= 2022)%>% 
@@ -53,7 +52,9 @@ WHR_summary <- WHR_data_across_years %>% filter(year >= 2020, year <= 2022)%>%
             Healthy.life.expectancy.at.birth = weighted.mean(Healthy.life.expectancy.at.birth, n, na.rm = TRUE),
             Freedom.to.make.life.choices = weighted.mean(Freedom.to.make.life.choices, n, na.rm = TRUE),
             Generosity = weighted.mean(Generosity, n, na.rm = TRUE),
-            Perceptions.of.corruption = weighted.mean(Perceptions.of.corruption, n, na.rm = TRUE))
+            Perceptions.of.corruption = weighted.mean(Perceptions.of.corruption, n, na.rm = TRUE)) %>% 
+  mutate(WHR_rank = rank(-Life.Ladder),
+         COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
 ```
 
 
@@ -183,10 +184,15 @@ comparison %>%
 
 We note that most absolute differences between our calculated mean values across life satisfaction and the six determinants of well-being and the values posted by the WHR are less than 0.001 which can be accounted for by rounding errors from published statistics rounded to the third decimal place. There are some countries where we see differences up to 0.025, which is too large to be accounted for by rounding errors. It is still not a large change, but indicates some difference between methods. We expect that these changes originate from restricting the sample to individuals with no missing values across all variables of interest, including life satisfaction and the questions concerning social support, generosity and freedom of choice. This assertion is supported by the fact that it is in these values where we see the largest discrepancies. 
 
-# Age-standardized Life-satisfaction Ranking
 
+**Creating an age-standardized life satisfaction Ranking**
+
+Age standardization is a statistical technique used in epidemiology and public health research to compare rates or proportions across different populations that may have different age distributions. The goal is to remove the effect of age as a confounding variable, allowing for a more accurate comparison of health indicators or outcomes between populations.
 
 ### Reading Gallup data and establishing age groups
+
+We use the WHO Standard Population to divide our data into 5 categories. 
+
 ```{r}
 # Load the cleaned Gallup World Poll data
 gallup_main <- readRDS("Data/(231101)GWP_cleaned_ageStandardizedWellbeing.rds")
@@ -202,10 +208,11 @@ gallup_main <- gallup_main %>%
       WP1220 > 29 & WP1220 <= 44 ~ "30-44", # Age group 30-44
       WP1220 > 44 & WP1220 <= 59 ~ "45-59", # Age group 45-59
       WP1220 > 59 & WP1220 <= 74 ~ "60-74", # Age group 60-74
-      WP1220 > 74 ~ "Over 75")) # Age group Over 75
+      WP1220 > 74 ~ "Over 74")) # Age group Over 74
 ```
 
-Creating Age-Standardized Life-Satisfaction Ranking
+### Creating Age-Standardized Life-Satisfaction Ranking
+
 ```{r}
 
 # Define the standard population weights for each age group. These weights are used to adjust the data for age standardization.
@@ -214,7 +221,6 @@ standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441, 0.1203791469,
 
 # Calculate the weighted mean life satisfaction (WP16) for each country, year, and age group in the Gallup data from 2020 to 2022.
 gallup_means <- gallup_main %>%
-  filter(YEAR_WAVE %in% 2020:2022) %>%
   group_by(COUNTRY_ISO3, YEAR_WAVE, age_group) %>%
   summarise(WeightedMeanLS = weighted.mean(WP16,WGT, na.rm=TRUE), n=n(), .groups = "drop") %>%
   filter(!(age_group=="NA")) %>%
@@ -225,92 +231,82 @@ gallup_means <- gallup_main %>%
       age_group == "30-44" ~ standard_population[2],
       age_group == "45-59" ~ standard_population[3], 
       age_group == "60-74" ~ standard_population[4], 
-      age_group == "Over 75" ~ standard_population[5])) 
+      age_group == "Over 74" ~ standard_population[5])) 
 
 # Calculate the weighted mean life satisfaction for each country and year, considering all age groups together.
-gallup_means <- gallup_means %>% 
+gallup_means <- gallup_means %>%
   bind_rows(
     gallup_means %>%
       group_by(COUNTRY_ISO3, YEAR_WAVE) %>%
-      summarise(WeightedMeanLS = weighted.mean(WeightedMeanLS, standard_population, na.rm=TRUE),
-             n = sum(n),
-             age_group = "allPopulation",
-             standard_population = 1)
+      summarise(
+        WeightedMeanLS = weighted.mean(WeightedMeanLS, standard_population, na.rm = TRUE),
+        n = sum(n),
+        age_group = "allPopulation",
+        standard_population = 1
+      )
   )
 
 # Calculate the weighted mean life satisfaction for each country and age group, considering all years together.
-gallup_across_years <- gallup_means %>%
+ gallup_across_years <- gallup_means %>%
+  filter(YEAR_WAVE %in% 2020:2022) %>%
   group_by(COUNTRY_ISO3, age_group) %>%
-  summarise(WeightedMeanLS = weighted.mean(WeightedMeanLS, n, na.rm=T), .groups = "drop")
-
+  summarise(WeightedMeanLS = weighted.mean(WeightedMeanLS, n, na.rm=T), .groups = "drop") 
 ```
 
-Comparing with WHR ranking
+### Comparing with WHR ranking
+
+We compare our age-standardized methodology with the WHR methodology in terms of rank and scores. 
+
 ```{r}
-# Compare AS scores and ranks with WHR scores and ranks
-age_standardized_ranking$AS_score <- as.numeric(
-  age_standardized_ranking$AS_score)
-age_standardized_ranking$AS_rank <- rank(-age_standardized_ranking$AS_score)
-
-WHR_AS_comparison <- merge(WHR_ranking_summary, age_standardized_ranking, by="COUNTRY_ISO3", all=FALSE)
-# Number of Countries in WHR is 137, AS is 143, so fixing AS ranking to the 137 countries for the sake of comparison
-WHR_AS_comparison$AS_rank <- rank(-WHR_AS_comparison$AS_score)
-
-WHR_AS_comparison$rank_difference <- (WHR_AS_comparison$WHR_rank -
-                                        WHR_AS_comparison$AS_rank)
-WHR_AS_comparison$score_difference <- (WHR_AS_comparison$AS_score -
-                                         WHR_AS_comparison$WHR_score)
+age_standardized_ranking <-  gallup_across_years %>% 
+  filter(age_group == "allPopulation") %>% 
+  mutate(AS_score = as.numeric(WeightedMeanLS),
+         AS_rank = rank(-AS_score)) %>% 
+  select(COUNTRY_ISO3, AS_score, AS_rank)
+  
+# Merge both rankings to compare, then compute differences in score and rank
+WHR_AS_comparison <- merge(WHR_summary, age_standardized_ranking, by="COUNTRY_ISO3", all=FALSE) %>%
+  mutate(rank_difference = WHR_rank - AS_rank,
+         score_difference = Life.Ladder - AS_score)
 ```
 
-Merging Data for Regression Analysis
+### Merging Data for Regression Analysis
+
+We merge our age standardized scores to WHR's data across years on the predictors in preparation for regression analysis.
+
 ```{r}
-# age_matrix contains life satisfaction for each age group in each country-year
-#age_matrix <- gallup_main %>%
-#  filter(!is.na(age_group)) %>% 
-#  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
-#  summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-#  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
-#  arrange(YEAR_CALENDAR, age_group) 
+AS_data_across_years <- merge(WHR_data_across_years, 
+                              gallup_means %>% 
+                                filter(age_group == "allPopulation"), 
+                              by.x = c("COUNTRY_ISO3", "year"), by.y = c("COUNTRY_ISO3", "YEAR_WAVE"), all = FALSE)
 
-#Old version of age_matrix
-age_matrix <- gallup_main %>%
-  filter(!is.na(age_group),
-         !is.na(Weighted.LS)) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
-  summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
-  arrange(YEAR_CALENDAR, age_group)
-
-# "compressed" age_matrix so that each cell is age-standardized life satisfaction for every country-year
-age_standardized_scores_wide <- age_matrix  %>%
-  group_by(YEAR_CALENDAR) %>%
-  summarise(across(AFG:ZWE, ~ weighted.mean(.x, standard_population)))
-age_standardized_scores <- gather(age_standardized_scores_wide, COUNTRY_ISO3, AS.LS, AFG:ZWE)
-colnames(age_standardized_scores) <- c("year", "COUNTRY_ISO3", "AS.LS", "Country.name")
-
-# Standardized_WHR_data is age standardized version of WHR data, containing age-standardized life satisfaction and raw data for 6 predictors for each country-year
-WHR_data$COUNTRY_ISO3 <- countrycode(WHR_data$Country.name, 'country.name', 'iso3c')
-WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Kosovo"] <- "XKX"
-WHR_data$COUNTRY_ISO3[WHR_data$Country.name=="Turkiye"] <- "TUR" 
-Standardized_WHR_data <- merge(WHR_data, age_standardized_scores, by=c("year","COUNTRY_ISO3"))
+# Number of rows in WHR_data_across_years and AS_data_across_years is a bit different. I wonder why.
+not_in_AS_data <- anti_join(WHR_data_across_years, AS_data_across_years, by = c("COUNTRY_ISO3", "year"))
 ```
 
-Age Standardized Regression Analysis
-```{r}
-# Remove missing values for regression
-Standardized_regression_data <- Standardized_WHR_data %>%
-  filter(!is.na(AS.LS),
-         !is.na(Log.GDP.per.capita),
-         !is.na(Social.support),
-         !is.na(Healthy.life.expectancy.at.birth),
-         !is.na(Freedom.to.make.life.choices),
-         !is.na(Generosity),
-         !is.na(Perceptions.of.corruption))
+### Age Standardized Regression Analysis
 
-Standardized_regression <- plm(AS.LS~ Log.GDP.per.capita+Social.support+
-              Healthy.life.expectancy.at.birth+Freedom.to.make.life.choices+
-              Generosity+Perceptions.of.corruption, data = Standardized_regression_data,
-            index = c("year","Country.name"), model="within")
+Following the approach of the World Happiness Report 2023 we run a regression of age-standardized life satisfaction on the six determinants of well-being suggested in the report, introducing fixed effects for year and clustering standard errors by country.
+
+```{r}
+Standardized_regression <- feols(
+  # The dependent variable is 'Life.Ladder'.
+  Life.Ladder ~ 
+  # The independent variables are six determinants of well-being.
+  Log.GDP.per.capita +
+  Social.support +
+  Healthy.life.expectancy.at.birth +
+  Freedom.to.make.life.choices +
+  Generosity +
+  Perceptions.of.corruption |
+  # Introduce fixed effects for 'year'.
+  year, 
+  # The data source is 'WHR_data_across_years'.
+  data = AS_data_across_years
+)
+
+# Display the summary of the regression model, clustering standard errors by country
+summary(Standardized_regression, cluster = "Country.name")
 ```
 
 Creating Dystopia in Standardized Context
@@ -789,7 +785,7 @@ Group 5: Over 74
 ```{r}
 # Creating WHR_data equivalent for age group 1 for regression
 age_standardized_scores_5  <- gallup_main %>% 
-  filter(age_group == "Over 75") %>% 
+  filter(age_group == "Over 74") %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
   summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
@@ -812,7 +808,7 @@ Standardized_regression_5 <- plm(AS.LS~ Log.GDP.per.capita+Social.support+
 
 # Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
 age_standardized_ranking_5  <- gallup_main %>% 
-  filter(age_group == "Over 75",
+  filter(age_group == "Over 74",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRY_ISO3) %>%
@@ -869,7 +865,7 @@ standardized_contributions_5$Rank <- rank(-standardized_contributions_5$Life.Lad
 
 # Filter and summarize for gallup_main_5
 gallup_main_5 <- gallup_main %>% 
-  filter(age_group == "Over 75",
+  filter(age_group == "Over 74",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRYNEW) %>%
