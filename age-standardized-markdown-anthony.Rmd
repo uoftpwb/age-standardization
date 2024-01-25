@@ -28,7 +28,7 @@ library(viridis)
 library(multcomp)
 
 # Set working directory to the parent directory of the current directory this file is in
-setwd(dirname(dirname(rstudioapi::getActiveDocumentContext()$path)))
+setwd(dirname(dirname(dirname(rstudioapi::getActiveDocumentContext()$path))))
 ```
 
 **Replicating World Happiness Report 2023, Chapter 2**
@@ -111,12 +111,12 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
 # Adding a new row named "Dystopia" with minimum values for each column (except for Perceptions.of.corruption, where we take the maximum because the coefficient is negative)
   add_row(
     Country.name = "Dystopia",
-    Log.GDP.per.capita = min(WHR_data_fig$Log.GDP.per.capita, na.rm = TRUE),
-    Social.support = min(WHR_data_fig$Social.support, na.rm = TRUE),
-    Healthy.life.expectancy.at.birth = min(WHR_data_fig$Healthy.life.expectancy.at.birth, na.rm = TRUE),
-    Freedom.to.make.life.choices = min(WHR_data_fig$Freedom.to.make.life.choices, na.rm = TRUE),
-    Generosity = min(WHR_data_fig$Generosity, na.rm = TRUE),
-    Perceptions.of.corruption = max(WHR_data_fig$Perceptions.of.corruption, na.rm = TRUE)
+    Log.GDP.per.capita = min(.$Log.GDP.per.capita, na.rm = TRUE),
+    Social.support = min(.$Social.support, na.rm = TRUE),
+    Healthy.life.expectancy.at.birth = min(.$Healthy.life.expectancy.at.birth, na.rm = TRUE),
+    Freedom.to.make.life.choices = min(.$Freedom.to.make.life.choices, na.rm = TRUE),
+    Generosity = min(.$Generosity, na.rm = TRUE),
+    Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
   )
 ```
 
