@@ -1284,7 +1284,7 @@ WHR_AS_comparison <- WHR_AS_comparison %>%
   rename(region = COUNTRY_NAME)
 
 WHR_AS_comparison <- WHR_AS_comparison %>% 
-  mutate(bin = cut(score_difference, breaks = seq(-1, 1, by = 0.2), include.lowest = TRUE))
+  mutate(bin = cut(score_difference, breaks = seq(-0.5, 0.5, by = 0.1), include.lowest = TRUE))
 
 # Merge the data with the world map
 world_map <- map_data("world") %>% filter(!(region%in%c("French Southern and Antarctic Lands","Antarctica"))) 
@@ -1616,14 +1616,24 @@ WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "Somaliland"] <- "XS"
 WHR_data_2013$COUNTRY_ISO3[WHR_data_2013$Country == "South_Korea"] <- "KOR"
 
 WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013, by.x="COUNTRY_ISO3", by.y="Country")
+WHR_AS_comparison_2013$WHR_rank_2013 <- rank(-WHR_AS_comparison_2013$Ladder)
+WHR_AS_comparison_2013$AS_rank_2013 <- rank(-WHR_AS_comparison_2013$AS_score)
 
 comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by.x="COUNTRY_ISO3", by.y="COUNTRY_ISO3")
-notable_countries <- comparison_2013_2023 %>% 
+
+notable_countries_score <- comparison_2013_2023 %>% 
   filter(WHR_score > Ladder & AS_score.x < AS_score.y |
          WHR_score < Ladder & AS_score.x > AS_score.y) %>% 
-  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
+  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y) %>% 
+  mutate(WHR_diff = WHR_2023 - WHR_2013,
+         AS_diff = AS_2023 - AS_2013,
+         diff_of_diff = WHR_diff - AS_diff) %>% 
+  filter(COUNTRY_ISO3 != "CYP")
 
-notable_countries <- notable_countries %>% 
+notable_countries_rank <- comparison_2013_2023 %>% 
+  filter(WHR_rank > WHR_rank_2013 & AS_rank < AS_rank_2013 |
+         WHR_rank < WHR_rank_2013 & AS_rank > AS_rank_2013) %>% 
+  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = WHR_rank, AS_2023 = AS_rank, WHR_2013 = WHR_rank_2013, AS_2013 = AS_rank_2013) %>% 
   mutate(WHR_diff = WHR_2023 - WHR_2013,
          AS_diff = AS_2023 - AS_2013,
          diff_of_diff = WHR_diff - AS_diff) %>% 
@@ -1931,5 +1941,31 @@ test <- test[, 2:ncol(test)]
   group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
   summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-```
+  
+test <- gallup_main %>% 
+    filter(!is.na(age_group)) %>% 
+    filter(YEAR_CALENDAR == 2012) %>% 
+    group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
+    summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
+    pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
+  
+  
+test1 <- gallup_main %>%
+  filter(!is.na(age_group)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  summarise(WeightedMeanLS = sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T)) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2012) %>% 
+  select(which(colSums(is.na(.)) < nrow(.)))
 
+
+test2 <- gallup_main %>%   
+	filter(!is.na(age_group)) %>% 
+	group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>% 
+	summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%   
+	pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%   
+	arrange(YEAR_CALENDAR, age_group) %>% 
+  filter(YEAR_CALENDAR == 2012) %>% 
+  select(which(colSums(is.na(.)) < nrow(.)))
+```
