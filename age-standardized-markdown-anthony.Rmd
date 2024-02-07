@@ -118,7 +118,8 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
     Freedom.to.make.life.choices = min(.$Freedom.to.make.life.choices, na.rm = TRUE),
     Generosity = min(.$Generosity, na.rm = TRUE),
     Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
-  )
+  ) %>% 
+  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
 ```
 
 ### Check that our calculations for means and contributions match those reported in the summary table by WHR2023
@@ -214,7 +215,6 @@ gallup_main <- gallup_main %>%
 ### Creating Age-Standardized Life-Satisfaction Ranking
 
 ```{r}
-
 # Define the standard population weights for each age group. These weights are used to adjust the data for age standardization.
 # Standard population by WHO includes from age 0. Thus, these weights are reweighted to be only from Age 15 or above. Some rounding error means that these add up to 1.000474. This isn't a concern as weighted means will reweight all weights to equal 1 automatically.
 standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441, 0.1203791469, 0.04150304671)
@@ -262,7 +262,7 @@ age_standardized_ranking <-  gallup_across_years %>%
   filter(age_group == "allPopulation") %>% 
   mutate(AS_score = as.numeric(WeightedMeanLS),
          AS_rank = rank(-AS_score)) %>% 
-  select(COUNTRY_ISO3, AS_score, AS_rank)
+  dplyr::select(COUNTRY_ISO3, AS_score, AS_rank)
   
 # Merge both rankings to compare, then compute differences in score and rank
 WHR_AS_comparison <- merge(WHR_summary, age_standardized_ranking, by="COUNTRY_ISO3", all=FALSE) %>%
@@ -278,7 +278,11 @@ We merge our age standardized scores to WHR's data across years on the predictor
 AS_data_across_years <- merge(WHR_data_across_years, 
                               gallup_means %>% 
                                 filter(age_group == "allPopulation"), 
-                              by.x = c("COUNTRY_ISO3", "year"), by.y = c("COUNTRY_ISO3", "YEAR_WAVE"), all = FALSE)
+                              by.x = c("COUNTRY_ISO3", "year"), 
+                              by.y = c("COUNTRY_ISO3", "YEAR_WAVE"), 
+                              all = FALSE)  %>% 
+  dplyr::select(-13:-15) %>% 
+  rename(n = n.y)
 
 # Number of rows in WHR_data_across_years and AS_data_across_years is a bit different. I wonder why.
 not_in_AS_data <- anti_join(WHR_data_across_years, AS_data_across_years, by = c("COUNTRY_ISO3", "year"))
@@ -310,48 +314,48 @@ summary(Standardized_regression, cluster = "Country.name")
 ```
 
 Creating Dystopia in Standardized Context
+
+```{r}
+AS_summary <- AS_data_across_years %>% filter(year >= 2020, year <= 2022) %>% 
+  group_by(Country.name) %>% 
+  summarize(AS.Life.ladder = weighted.mean(WeightedMeanLS, n),
+            Log.GDP.per.capita = weighted.mean(Log.GDP.per.capita, n, na.rm = TRUE),
+            Social.support = weighted.mean(Social.support, n, na.rm = TRUE),
+            Healthy.life.expectancy.at.birth = weighted.mean(Healthy.life.expectancy.at.birth, n, na.rm = TRUE),
+            Freedom.to.make.life.choices = weighted.mean(Freedom.to.make.life.choices, n, na.rm = TRUE),
+            Generosity = weighted.mean(Generosity, n, na.rm = TRUE),
+            Perceptions.of.corruption = weighted.mean(Perceptions.of.corruption, n, na.rm = TRUE)) %>% 
+  mutate(WHR_rank = rank(-AS.Life.ladder),
+         COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
+```
+
 ```{r}
 # Summary of age-standardized life satisfaction + raw data for predictors for years of interest (2020-2022)
-Standardized_WHR_summary <- merge(WHR_summary, age_standardized_ranking, by="Country.name")
-
 # Create Dystopia for the age-standardized summary data. This should be the same as non-age-standardized summary
-Standardized_WHR_summary[, 2] <- Standardized_WHR_summary[, 10]
-Standardized_WHR_summary <- Standardized_WHR_summary[, -c(9:11)]
-Standardized_WHR_summary  <- rbind(Standardized_WHR_summary, WHR_summary[138,])
+Standardized_WHR_summary <- merge(WHR_data_fig, age_standardized_ranking, by="COUNTRY_ISO3") %>% 
+  mutate(AS_rank = rank(-AS_score)) %>% 
+  add_row(
+    Country.name = "Dystopia",
+    Log.GDP.per.capita = min(.$Log.GDP.per.capita, na.rm = TRUE),
+    Social.support = min(.$Social.support, na.rm = TRUE),
+    Healthy.life.expectancy.at.birth = min(.$Healthy.life.expectancy.at.birth, na.rm = TRUE),
+    Freedom.to.make.life.choices = min(.$Freedom.to.make.life.choices, na.rm = TRUE),
+    Generosity = min(.$Generosity, na.rm = TRUE),
+    Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
+  ) 
 ```
 
 Calculate Contributions
 ```{r}
 # Same as WHR. For each predictor, find the distance of the country's value from Dystopia's value. This is necessary to determine how much it contributes to the LS score. This is done by multiplying the distance from Dystopia by the coefficient corresponding to that predictor. 
 
-standardized_distance_from_dystopia <- cbind(WHR_summary %>% 
-                                  dplyr::select(Country.name) %>% 
-                                  filter(Country.name != "Dystopia"),
-                                (Standardized_WHR_summary[1:137, 3:8] - Standardized_WHR_summary[rep(138, 137), 3:8]))
-
-standardized_contributions <- standardized_distance_from_dystopia$Country.name
-standardized_contributions <- cbind(standardized_contributions, standardized_distance_from_dystopia[2] * coef(summary(Standardized_regression))[1,1])
-standardized_contributions <- cbind(standardized_contributions, standardized_distance_from_dystopia[3] * coef(summary(Standardized_regression))[2,1])
-standardized_contributions <- cbind(standardized_contributions, standardized_distance_from_dystopia[4] * coef(summary(Standardized_regression))[3,1])
-standardized_contributions <- cbind(standardized_contributions, standardized_distance_from_dystopia[5] * coef(summary(Standardized_regression))[4,1])
-standardized_contributions <- cbind(standardized_contributions, standardized_distance_from_dystopia[6] * coef(summary(Standardized_regression))[5,1])
-standardized_contributions <- cbind(standardized_contributions, standardized_distance_from_dystopia[7] * coef(summary(Standardized_regression))[6,1])
-
-standardized_contributions$sum <- apply(standardized_contributions[,-1], 1, sum) 
-ASLS <- Standardized_WHR_summary[1:2]
-standardized_contributions <- merge(standardized_contributions, ASLS, 
-                                    by.x="standardized_contributions",
-                                    by.y="Country.name")
-
-standardized_contributions[standardized_contributions$standardized_contributions=="Saudi Arabia", "AS.LS"] <-
-  6.463708
-
-
-standardized_contributions$residual <- standardized_contributions$AS.LS - standardized_contributions$sum
-standardized_contributions <- standardized_contributions[, c(1, 9, 2, 3, 4, 5, 6, 7, 10)]
-names(standardized_contributions)[names(standardized_contributions) == 'standardized_contributions'] <- 
-  'Country'
-standardized_contributions$Rank <- rank(-standardized_contributions$AS.LS)
+Standardized_contributions <- Standardized_WHR_summary %>% 
+  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(Standardized_WHR_summary$Log.GDP.per.capita, na.rm = TRUE)) * coef(Standardized_regression)["Log.GDP.per.capita"],
+         Social.support.cont = (Social.support - min(Standardized_WHR_summary$Social.support, na.rm = TRUE)) * coef(Standardized_regression)["Social.support"],
+         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(Standardized_WHR_summary$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Standardized_regression)["Healthy.life.expectancy.at.birth"],
+         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(Standardized_WHR_summary$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
+         Generosity.cont = (Generosity - min(Standardized_WHR_summary$Generosity, na.rm = TRUE)) * coef(Standardized_regression)["Generosity"],
+         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(Standardized_WHR_summary$Perceptions.of.corruption, na.rm = TRUE)) * coef(Standardized_regression)["Perceptions.of.corruption"])
 ```
 
 **Age-specific Life-satisfaction**
