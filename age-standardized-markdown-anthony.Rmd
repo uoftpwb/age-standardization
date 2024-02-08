@@ -246,7 +246,7 @@ gallup_means <- gallup_means %>%
       )
   )
 
-# Calculate the weighted mean life satisfaction for each country and age group, considering all years together.
+# Calculate the weighted mean life satisfaction for each country and age group from 2020 to 2022, considering all years together.
  gallup_across_years <- gallup_means %>%
   filter(YEAR_WAVE %in% 2020:2022) %>%
   group_by(COUNTRY_ISO3, age_group) %>%
@@ -258,6 +258,7 @@ gallup_means <- gallup_means %>%
 We compare our age-standardized methodology with the WHR methodology in terms of rank and scores. 
 
 ```{r}
+# Create ranking from the life satisfaction scores for the entire population for each country
 age_standardized_ranking <-  gallup_across_years %>% 
   filter(age_group == "allPopulation") %>% 
   mutate(AS_score = as.numeric(WeightedMeanLS),
