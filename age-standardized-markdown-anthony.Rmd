@@ -426,7 +426,7 @@ specific_contributions_5 <- specific_contributions_list[["Over 74"]]
 ```
 
 **Further Analysis**
-Finding countries with significant changes
+Finding countries with significant changes with an absolute score difference larger than 0.2. 
 ```{r}
 significant_difference <- WHR_AS_comparison %>% 
   filter(score_difference >= 0.20 | score_difference <= -0.20)
