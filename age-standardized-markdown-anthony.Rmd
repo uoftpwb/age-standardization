@@ -296,6 +296,12 @@ Following the approach of the World Happiness Report 2023 we run a regression of
 ```{r}
 Standardized_regression <- feols(
   # The dependent variable is 'Life.Ladder'.
+  
+  
+  # CLARIFY Life.Ladder AS AS OR WHR
+  
+  
+  
   Life.Ladder ~ 
   # The independent variables are six determinants of well-being.
   Log.GDP.per.capita +
@@ -361,249 +367,72 @@ Standardized_contributions <- Standardized_WHR_summary %>%
 ```
 
 **Age-specific Life-satisfaction**
-Group 1: 15 to 29
 ```{r}
-# Creating WHR_data_across_years equivalent for age group 1 for regression
-age_specific_scores_1  <- gallup_main %>% 
-  filter(age_group == "15-29") %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_scores_1) <- c("COUNTRY_ISO3", "year", "AS.LS")
+# Function to calculate specific contributions for a given age group
+calculate_specific_contributions <- function(age_group_data, regression_model) {
+  specific_contributions <- age_group_data %>%
+    mutate(
+      Log.GDP.per.capita.cont = (coef(regression_model)["Log.GDP.per.capita"] * Log.GDP.per.capita - min(coef(regression_model)["Log.GDP.per.capita"] * age_group_data$Log.GDP.per.capita, na.rm = TRUE)),
+      Social.support.cont = (coef(regression_model)["Social.support"] * Social.support - min(coef(regression_model)["Social.support"] * age_group_data$Social.support, na.rm = TRUE)),
+      Healthy.life.expectancy.at.birth.cont = (coef(regression_model)["Healthy.life.expectancy.at.birth"] * Healthy.life.expectancy.at.birth - min(coef(regression_model)["Healthy.life.expectancy.at.birth"] * age_group_data$Healthy.life.expectancy.at.birth, na.rm = TRUE)) ,
+      Freedom.to.make.life.choices.cont = (coef(regression_model)["Freedom.to.make.life.choices"] * Freedom.to.make.life.choices - min(coef(regression_model)["Freedom.to.make.life.choices"] * age_group_data$Freedom.to.make.life.choices, na.rm = TRUE)),
+      Generosity.cont = (coef(regression_model)["Generosity"] * Generosity - min(coef(regression_model)["Generosity"] * age_group_data$Generosity, na.rm = TRUE)),
+      Perceptions.of.corruption.cont = (coef(regression_model)["Perceptions.of.corruption"] * Perceptions.of.corruption - min(coef(regression_model)["Perceptions.of.corruption"] * age_group_data$Perceptions.of.corruption, na.rm = TRUE)) 
+    )
+  return(specific_contributions)
+}
 
-# Merge with WHR_data_across_years, remove missing values for regression 
-Specific_regression_data_1 <- merge(WHR_data_across_years, age_specific_scores_1, by=c("year","COUNTRY_ISO3")) 
+# List to store specific contributions data frames for each age group
+specific_contributions_list <- list()
+# Iterate over age groups
+age_groups <- c("15-29", "30-44", "45-59", "60-74", "Over 74")
 
-# Perform regression
-Specific_regression_1 <- feols(
-  # The dependent variable is 'AS.LS'.
-  AS.LS ~ 
-  # The independent variables are six determinants of well-being.
-  Log.GDP.per.capita +
-  Social.support +
-  Healthy.life.expectancy.at.birth +
-  Freedom.to.make.life.choices +
-  Generosity +
-  Perceptions.of.corruption |
-  # Introduce fixed effects for 'year'.
-  year, 
-  data = Specific_regression_data_1)
+for (group in age_groups) {
+  age_specific_scores <- gallup_means %>% 
+    filter(age_group == group) %>% 
+    dplyr::select(COUNTRY_ISO3, year = YEAR_WAVE, AS.LS = WeightedMeanLS)
 
-# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
-age_specific_ranking_1  <- gallup_main %>% 
-  filter(age_group == "15-29",
-         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_ranking_1) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
+  # Merge with WHR_data_across_years, remove missing values for regression 
+  Specific_regression_data <- merge(WHR_data_across_years, age_specific_scores, by=c("year","COUNTRY_ISO3")) 
 
-specific_WHR_summary_1 <- merge(WHR_data_fig, age_specific_ranking_1, by="COUNTRY_ISO3") %>% 
-  mutate(AS_rank = rank(-AS.LS)) 
+  # Perform regression
+  Specific_regression <- feols(
+    # The dependent variable is 'AS.LS'.
+    AS.LS ~ 
+    # The independent variables are six determinants of well-being.
+    Log.GDP.per.capita +
+    Social.support +
+    Healthy.life.expectancy.at.birth +
+    Freedom.to.make.life.choices +
+    Generosity +
+    Perceptions.of.corruption |
+    # Introduce fixed effects for 'year'.
+    year, 
+    data = Specific_regression_data)
 
-specific_contributions_1 <- specific_WHR_summary_1 %>% 
-  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_1$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_1)["Log.GDP.per.capita"],
-         Social.support.cont = (Social.support - min(specific_WHR_summary_1$Social.support, na.rm = TRUE)) * coef(Specific_regression_1)["Social.support"],
-         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_1$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_1)["Healthy.life.expectancy.at.birth"],
-         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_1$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
-         Generosity.cont = (Generosity - min(specific_WHR_summary_1$Generosity, na.rm = TRUE)) * coef(Specific_regression_1)["Generosity"],
-         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_1$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_1)["Perceptions.of.corruption"])
-```
+  # Find age-standardized score for each age-group. No process of weighting by year because we are starting from  
+  # Gallup individual data, meaning we end up with the same values through a simple average. 
+  age_specific_ranking <- gallup_across_years %>% 
+    filter(age_group == group)
+  colnames(age_specific_ranking) <- c("COUNTRY_ISO3", "age_group", "AS.LS")
+  
+  specific_WHR_summary <- merge(WHR_data_fig, age_specific_ranking, by="COUNTRY_ISO3") %>% 
+    mutate(AS_rank = rank(-AS.LS)) 
 
-Group 2: 30-44
-```{r}
-# Creating WHR_data_across_years equivalent for age group 2 for regression
-age_specific_scores_2  <- gallup_main %>% 
-  filter(age_group == "30-44") %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_scores_2) <- c("COUNTRY_ISO3", "year", "AS.LS")
+  # Calculate contributions
+  specific_contributions <- calculate_specific_contributions(specific_WHR_summary, Specific_regression)
+  
+  specific_contributions_list[[group]] <- specific_contributions
+}
 
-# Merge with WHR_data_across_years, remove missing values for regression 
-Specific_regression_data_2 <- merge(WHR_data_across_years, age_specific_scores_2, by=c("year","COUNTRY_ISO3")) 
+# Now, specific_contributions_list contains specific contributions data frames for each age group
+# Access specific contributions for an age group like specific_contributions_list[["15-29"]]
 
-# Perform regression
-Specific_regression_2 <- feols(
-  # The dependent variable is 'AS.LS'.
-  AS.LS ~ 
-  # The independent variables are six determinants of well-being.
-  Log.GDP.per.capita +
-  Social.support +
-  Healthy.life.expectancy.at.birth +
-  Freedom.to.make.life.choices +
-  Generosity +
-  Perceptions.of.corruption |
-  # Introduce fixed effects for 'year'.
-  year, 
-  data = Specific_regression_data_2)
-
-# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
-age_specific_ranking_2  <- gallup_main %>% 
-  filter(age_group == "30-44",
-         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_ranking_2) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
-
-specific_WHR_summary_2 <- merge(WHR_data_fig, age_specific_ranking_2, by="COUNTRY_ISO3") %>% 
-  mutate(AS_rank = rank(-AS.LS)) 
-
-specific_contributions_2 <- specific_WHR_summary_2 %>% 
-  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_2$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_2)["Log.GDP.per.capita"],
-         Social.support.cont = (Social.support - min(specific_WHR_summary_2$Social.support, na.rm = TRUE)) * coef(Specific_regression_2)["Social.support"],
-         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_2$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_2)["Healthy.life.expectancy.at.birth"],
-         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_2$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
-         Generosity.cont = (Generosity - min(specific_WHR_summary_2$Generosity, na.rm = TRUE)) * coef(Specific_regression_2)["Generosity"],
-         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_2$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_2)["Perceptions.of.corruption"])
-```
-
-Group 3: 45-59
-```{r}
-# Creating WHR_data_across_years equivalent for age group 3 for regression
-age_specific_scores_3  <- gallup_main %>% 
-  filter(age_group == "45-59") %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_scores_3) <- c("COUNTRY_ISO3", "year", "AS.LS")
-
-# Merge with WHR_data_across_years, remove missing values for regression 
-Specific_regression_data_3 <- merge(WHR_data_across_years, age_specific_scores_3, by=c("year","COUNTRY_ISO3")) 
-
-# Perform regression
-Specific_regression_3 <- feols(
-  # The dependent variable is 'AS.LS'.
-  AS.LS ~ 
-  # The independent variables are six determinants of well-being.
-  Log.GDP.per.capita +
-  Social.support +
-  Healthy.life.expectancy.at.birth +
-  Freedom.to.make.life.choices +
-  Generosity +
-  Perceptions.of.corruption |
-  # Introduce fixed effects for 'year'.
-  year, 
-  data = Specific_regression_data_3)
-
-# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
-age_specific_ranking_3  <- gallup_main %>% 
-  filter(age_group == "45-59",
-         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_ranking_3) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
-
-specific_WHR_summary_3 <- merge(WHR_data_fig, age_specific_ranking_3, by="COUNTRY_ISO3") %>% 
-  mutate(AS_rank = rank(-AS.LS)) 
-
-specific_contributions_3 <- specific_WHR_summary_3 %>% 
-  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_3$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_3)["Log.GDP.per.capita"],
-         Social.support.cont = (Social.support - min(specific_WHR_summary_3$Social.support, na.rm = TRUE)) * coef(Specific_regression_3)["Social.support"],
-         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_3$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_3)["Healthy.life.expectancy.at.birth"],
-         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_3$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
-         Generosity.cont = (Generosity - min(specific_WHR_summary_3$Generosity, na.rm = TRUE)) * coef(Specific_regression_3)["Generosity"],
-         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_3$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_3)["Perceptions.of.corruption"])
-```
-
-Group 4: 60-74
-```{r}
-# Creating WHR_data_across_years equivalent for age group 4 for regression
-age_specific_scores_4  <- gallup_main %>% 
-  filter(age_group == "60-74") %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_scores_4) <- c("COUNTRY_ISO3", "year", "AS.LS")
-
-# Merge with WHR_data_across_years, remove missing values for regression 
-Specific_regression_data_4 <- merge(WHR_data_across_years, age_specific_scores_4, by=c("year","COUNTRY_ISO3")) 
-
-# Perform regression
-Specific_regression_4 <- feols(
-  # The dependent variable is 'AS.LS'.
-  AS.LS ~ 
-  # The independent variables are six determinants of well-being.
-  Log.GDP.per.capita +
-  Social.support +
-  Healthy.life.expectancy.at.birth +
-  Freedom.to.make.life.choices +
-  Generosity +
-  Perceptions.of.corruption |
-  # Introduce fixed effects for 'year'.
-  year, 
-  data = Specific_regression_data_4)
-
-# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
-age_specific_ranking_4  <- gallup_main %>% 
-  filter(age_group == "60-74",
-         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_ranking_4) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
-
-specific_WHR_summary_4 <- merge(WHR_data_fig, age_specific_ranking_4, by="COUNTRY_ISO3") %>% 
-  mutate(AS_rank = rank(-AS.LS)) 
-
-specific_contributions_4 <- specific_WHR_summary_4 %>% 
-  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_4$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_4)["Log.GDP.per.capita"],
-         Social.support.cont = (Social.support - min(specific_WHR_summary_4$Social.support, na.rm = TRUE)) * coef(Specific_regression_4)["Social.support"],
-         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_4$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_4)["Healthy.life.expectancy.at.birth"],
-         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_4$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
-         Generosity.cont = (Generosity - min(specific_WHR_summary_4$Generosity, na.rm = TRUE)) * coef(Specific_regression_4)["Generosity"],
-         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_4$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_4)["Perceptions.of.corruption"])
-```
-
-Group 5: Over 74
-```{r}
-# Creating WHR_data_across_years equivalent for age group 5 for regression
-age_specific_scores_5  <- gallup_main %>% 
-  filter(age_group == "Over 74") %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_scores_5) <- c("COUNTRY_ISO3", "year", "AS.LS")
-
-# Merge with WHR_data_across_years, remove missing values for regression 
-Specific_regression_data_5 <- merge(WHR_data_across_years, age_specific_scores_5, by=c("year","COUNTRY_ISO3")) 
-
-# Perform regression
-Specific_regression_5 <- feols(
-  # The dependent variable is 'AS.LS'.
-  AS.LS ~ 
-  # The independent variables are six determinants of well-being.
-  Log.GDP.per.capita +
-  Social.support +
-  Healthy.life.expectancy.at.birth +
-  Freedom.to.make.life.choices +
-  Generosity +
-  Perceptions.of.corruption |
-  # Introduce fixed effects for 'year'.
-  year, 
-  data = Specific_regression_data_5)
-
-# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
-age_specific_ranking_5  <- gallup_main %>% 
-  filter(age_group == "Over 74",
-         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
-  drop_na(Weighted.LS) %>% 
-  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
-  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
-colnames(age_specific_ranking_5) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
-
-specific_WHR_summary_5 <- merge(WHR_data_fig, age_specific_ranking_5, by="COUNTRY_ISO3") %>% 
-  mutate(AS_rank = rank(-AS.LS)) 
-
-specific_contributions_5 <- specific_WHR_summary_5 %>% 
-  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_5$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_5)["Log.GDP.per.capita"],
-         Social.support.cont = (Social.support - min(specific_WHR_summary_5$Social.support, na.rm = TRUE)) * coef(Specific_regression_5)["Social.support"],
-         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_5$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_5)["Healthy.life.expectancy.at.birth"],
-         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_5$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
-         Generosity.cont = (Generosity - min(specific_WHR_summary_5$Generosity, na.rm = TRUE)) * coef(Specific_regression_5)["Generosity"],
-         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_5$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_5)["Perceptions.of.corruption"])
+specific_contributions_1 <- specific_contributions_list[["15-29"]]
+specific_contributions_2 <- specific_contributions_list[["30-44"]]
+specific_contributions_3 <- specific_contributions_list[["45-59"]]
+specific_contributions_4 <- specific_contributions_list[["60-74"]]
+specific_contributions_5 <- specific_contributions_list[["Over 74"]]
 ```
 
 **Further Analysis**
@@ -951,86 +780,42 @@ significant_changes_in_rank <- WHR_AS_comparison %>%
   dplyr::select(COUNTRY_ISO3, region, Life.Ladder, AS_score, rank_difference, score_difference)
 ```
 
-Analysis of Age-Specific Rankings - Age Group 1
+
+Analysis of Age-Specific Rankings
 ```{r}
-specific_contributions_1 <- specific_contributions_1 %>%  
-  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
-  mutate(rank_difference = AS_rank - WHR_rank,
-         score_difference = AS.LS - Life.Ladder)
-            
-rd1 <- mean(abs(specific_contributions_1$rank_difference))
-sd1 <- mean(abs(specific_contributions_1$score_difference))
+# Create empty vectors
+rank_diff <- c()
+score_diff <- c()
 
-significant_changes_in_rank_1 <- specific_contributions_1 %>% 
-  filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
-```
+# Create an empty list to store significant changes
+significant_changes_list <- list()
 
-Analysis of Age-Specific Rankings - Age Group 2
-```{r}
-specific_contributions_2 <- specific_contributions_2 %>%  
-  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
-  mutate(rank_difference = AS_rank - WHR_rank,
-         score_difference = AS.LS - Life.Ladder)
-            
-rd2 <- mean(abs(specific_contributions_2$rank_difference))
-sd2 <- mean(abs(specific_contributions_2$score_difference))
+# Iterate over the names of the list (i.e., the age groups)
+for (group in names(specific_contributions_list)) {
+  
+  # Get the contributions for the current age group
+  contributions <- specific_contributions_list[[group]]
+  
+  contributions <- contributions %>% 
+    mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+    mutate(rank_difference = AS_rank - WHR_rank,
+           score_difference = AS.LS - Life.Ladder)
+  
+  rd <- mean(abs(contributions$rank_difference))
+  rank_diff <- c(rank_diff, rd)
+  
+  sd <- mean(abs(contributions$score_difference))
+  score_diff <- c(score_diff, sd)
+  
+  significant_changes_in_rank <- contributions %>% 
+    filter(abs(rank_difference) >= 10) %>% 
+    dplyr::select(COUNTRY_ISO3, Country = Country.name, Life.Ladder, AS.LS, rank_difference, score_difference)
+  
+  significant_changes_list[[group]] <- significant_changes_in_rank
+}
 
-significant_changes_in_rank_2 <- specific_contributions_2 %>% 
-  filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
-```
-
-Analysis of Age-Specific Rankings - Age Group 3
-```{r}
-specific_contributions_3 <- specific_contributions_3 %>%  
-  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
-  mutate(rank_difference = AS_rank - WHR_rank,
-         score_difference = AS.LS - Life.Ladder)
-            
-rd3 <- mean(abs(specific_contributions_3$rank_difference))
-sd3 <- mean(abs(specific_contributions_3$score_difference))
-
-significant_changes_in_rank_3 <- specific_contributions_3 %>% 
-  filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
-```
-
-Analysis of Age-Specific Rankings - Age Group 4
-```{r}
-specific_contributions_4 <- specific_contributions_4 %>%  
-  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
-  mutate(rank_difference = AS_rank - WHR_rank,
-         score_difference = AS.LS - Life.Ladder)
-            
-rd4 <- mean(abs(specific_contributions_4$rank_difference))
-sd4 <- mean(abs(specific_contributions_4$score_difference))
-
-significant_changes_in_rank_4 <- specific_contributions_4 %>% 
-  filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
-```
-
-Analysis of Age-Specific Rankings - Age Group 5
-```{r}
-specific_contributions_5 <- specific_contributions_5 %>%  
-  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
-  mutate(rank_difference = AS_rank - WHR_rank,
-         score_difference = AS.LS - Life.Ladder)
-            
-rd5 <- mean(abs(specific_contributions_5$rank_difference))
-sd5 <- mean(abs(specific_contributions_5$score_difference))
-
-significant_changes_in_rank_5 <- specific_contributions_5 %>% 
-  filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
-
-# Creating table summarizing how much change is in each rank and score for each age group
-rank_diff <- c(rd1, rd2, rd3, rd4, rd5)
-score_diff <- c(sd1, sd2, sd3, sd4, sd5)
 age_specific_differences <- data.frame(rank_diff, score_diff)
 ```
-
 
 Ranking Comparison Table:
 ```{r}
@@ -1449,4 +1234,244 @@ age_standardized_ranking$Country.name[age_standardized_ranking$Country.name=="Pa
 #                                            values_to = "AS_score")
 # age_standardized_ranking$COUNTRY_ISO3 <- gsub(
 #   '_ASLS', '', age_standardized_ranking_test$COUNTRY_ISO3)
+```
+
+
+## Old Age-Specific Calculations
+Group 1: 15 to 29
+```{r}
+# Creating WHR_data_across_years equivalent for age group 1 for regression
+age_specific_scores_1 <- gallup_means %>% 
+  filter(age_group == "15-29") %>% 
+  dplyr::select(COUNTRY_ISO3, year = YEAR_WAVE, AS.LS = WeightedMeanLS)
+
+# Merge with WHR_data_across_years, remove missing values for regression 
+Specific_regression_data_1 <- merge(WHR_data_across_years, age_specific_scores_1, by=c("year","COUNTRY_ISO3")) 
+
+# Perform regression
+Specific_regression_1 <- feols(
+  # The dependent variable is 'AS.LS'.
+  AS.LS ~ 
+  # The independent variables are six determinants of well-being.
+  Log.GDP.per.capita +
+  Social.support +
+  Healthy.life.expectancy.at.birth +
+  Freedom.to.make.life.choices +
+  Generosity +
+  Perceptions.of.corruption |
+  # Introduce fixed effects for 'year'.
+  year, 
+  data = Specific_regression_data_1)
+
+# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
+age_specific_ranking_1 <- gallup_across_years %>% 
+  filter(age_group == "15-29")
+colnames(age_specific_ranking_1) <- c("COUNTRY_ISO3", "age_group", "AS.LS")
+
+specific_WHR_summary_1 <- merge(WHR_data_fig, age_specific_ranking_1, by="COUNTRY_ISO3") %>% 
+  mutate(AS_rank = rank(-AS.LS)) 
+
+specific_contributions_1 <- specific_WHR_summary_1 %>% 
+  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_1$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_1)["Log.GDP.per.capita"],
+         Social.support.cont = (Social.support - min(specific_WHR_summary_1$Social.support, na.rm = TRUE)) * coef(Specific_regression_1)["Social.support"],
+         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_1$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_1)["Healthy.life.expectancy.at.birth"],
+         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_1$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
+         Generosity.cont = (Generosity - min(specific_WHR_summary_1$Generosity, na.rm = TRUE)) * coef(Specific_regression_1)["Generosity"],
+         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_1$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_1)["Perceptions.of.corruption"])
+```
+
+Group 2: 30-44
+```{r}
+# Creating WHR_data_across_years equivalent for age group 2 for regression
+age_specific_scores_2  <- gallup_main %>% 
+  filter(age_group == "30-44") %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_scores_2) <- c("COUNTRY_ISO3", "year", "AS.LS")
+
+# Merge with WHR_data_across_years, remove missing values for regression 
+Specific_regression_data_2 <- merge(WHR_data_across_years, age_specific_scores_2, by=c("year","COUNTRY_ISO3")) 
+
+# Perform regression
+Specific_regression_2 <- feols(
+  # The dependent variable is 'AS.LS'.
+  AS.LS ~ 
+  # The independent variables are six determinants of well-being.
+  Log.GDP.per.capita +
+  Social.support +
+  Healthy.life.expectancy.at.birth +
+  Freedom.to.make.life.choices +
+  Generosity +
+  Perceptions.of.corruption |
+  # Introduce fixed effects for 'year'.
+  year, 
+  data = Specific_regression_data_2)
+
+# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
+age_specific_ranking_2  <- gallup_main %>% 
+  filter(age_group == "30-44",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_ranking_2) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
+
+specific_WHR_summary_2 <- merge(WHR_data_fig, age_specific_ranking_2, by="COUNTRY_ISO3") %>% 
+  mutate(AS_rank = rank(-AS.LS)) 
+
+specific_contributions_2 <- specific_WHR_summary_2 %>% 
+  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_2$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_2)["Log.GDP.per.capita"],
+         Social.support.cont = (Social.support - min(specific_WHR_summary_2$Social.support, na.rm = TRUE)) * coef(Specific_regression_2)["Social.support"],
+         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_2$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_2)["Healthy.life.expectancy.at.birth"],
+         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_2$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
+         Generosity.cont = (Generosity - min(specific_WHR_summary_2$Generosity, na.rm = TRUE)) * coef(Specific_regression_2)["Generosity"],
+         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_2$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_2)["Perceptions.of.corruption"])
+```
+
+Group 3: 45-59
+```{r}
+# Creating WHR_data_across_years equivalent for age group 3 for regression
+age_specific_scores_3  <- gallup_main %>% 
+  filter(age_group == "45-59") %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_scores_3) <- c("COUNTRY_ISO3", "year", "AS.LS")
+
+# Merge with WHR_data_across_years, remove missing values for regression 
+Specific_regression_data_3 <- merge(WHR_data_across_years, age_specific_scores_3, by=c("year","COUNTRY_ISO3")) 
+
+# Perform regression
+Specific_regression_3 <- feols(
+  # The dependent variable is 'AS.LS'.
+  AS.LS ~ 
+  # The independent variables are six determinants of well-being.
+  Log.GDP.per.capita +
+  Social.support +
+  Healthy.life.expectancy.at.birth +
+  Freedom.to.make.life.choices +
+  Generosity +
+  Perceptions.of.corruption |
+  # Introduce fixed effects for 'year'.
+  year, 
+  data = Specific_regression_data_3)
+
+# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
+age_specific_ranking_3  <- gallup_main %>% 
+  filter(age_group == "45-59",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_ranking_3) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
+
+specific_WHR_summary_3 <- merge(WHR_data_fig, age_specific_ranking_3, by="COUNTRY_ISO3") %>% 
+  mutate(AS_rank = rank(-AS.LS)) 
+
+specific_contributions_3 <- specific_WHR_summary_3 %>% 
+  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_3$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_3)["Log.GDP.per.capita"],
+         Social.support.cont = (Social.support - min(specific_WHR_summary_3$Social.support, na.rm = TRUE)) * coef(Specific_regression_3)["Social.support"],
+         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_3$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_3)["Healthy.life.expectancy.at.birth"],
+         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_3$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
+         Generosity.cont = (Generosity - min(specific_WHR_summary_3$Generosity, na.rm = TRUE)) * coef(Specific_regression_3)["Generosity"],
+         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_3$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_3)["Perceptions.of.corruption"])
+```
+
+Group 4: 60-74
+```{r}
+# Creating WHR_data_across_years equivalent for age group 4 for regression
+age_specific_scores_4  <- gallup_main %>% 
+  filter(age_group == "60-74") %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_scores_4) <- c("COUNTRY_ISO3", "year", "AS.LS")
+
+# Merge with WHR_data_across_years, remove missing values for regression 
+Specific_regression_data_4 <- merge(WHR_data_across_years, age_specific_scores_4, by=c("year","COUNTRY_ISO3")) 
+
+# Perform regression
+Specific_regression_4 <- feols(
+  # The dependent variable is 'AS.LS'.
+  AS.LS ~ 
+  # The independent variables are six determinants of well-being.
+  Log.GDP.per.capita +
+  Social.support +
+  Healthy.life.expectancy.at.birth +
+  Freedom.to.make.life.choices +
+  Generosity +
+  Perceptions.of.corruption |
+  # Introduce fixed effects for 'year'.
+  year, 
+  data = Specific_regression_data_4)
+
+# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
+age_specific_ranking_4  <- gallup_main %>% 
+  filter(age_group == "60-74",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_ranking_4) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
+
+specific_WHR_summary_4 <- merge(WHR_data_fig, age_specific_ranking_4, by="COUNTRY_ISO3") %>% 
+  mutate(AS_rank = rank(-AS.LS)) 
+
+specific_contributions_4 <- specific_WHR_summary_4 %>% 
+  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_4$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_4)["Log.GDP.per.capita"],
+         Social.support.cont = (Social.support - min(specific_WHR_summary_4$Social.support, na.rm = TRUE)) * coef(Specific_regression_4)["Social.support"],
+         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_4$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_4)["Healthy.life.expectancy.at.birth"],
+         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_4$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
+         Generosity.cont = (Generosity - min(specific_WHR_summary_4$Generosity, na.rm = TRUE)) * coef(Specific_regression_4)["Generosity"],
+         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_4$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_4)["Perceptions.of.corruption"])
+```
+
+Group 5: Over 74
+```{r}
+# Creating WHR_data_across_years equivalent for age group 5 for regression
+age_specific_scores_5  <- gallup_main %>% 
+  filter(age_group == "Over 74") %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_scores_5) <- c("COUNTRY_ISO3", "year", "AS.LS")
+
+# Merge with WHR_data_across_years, remove missing values for regression 
+Specific_regression_data_5 <- merge(WHR_data_across_years, age_specific_scores_5, by=c("year","COUNTRY_ISO3")) 
+
+# Perform regression
+Specific_regression_5 <- feols(
+  # The dependent variable is 'AS.LS'.
+  AS.LS ~ 
+  # The independent variables are six determinants of well-being.
+  Log.GDP.per.capita +
+  Social.support +
+  Healthy.life.expectancy.at.birth +
+  Freedom.to.make.life.choices +
+  Generosity +
+  Perceptions.of.corruption |
+  # Introduce fixed effects for 'year'.
+  year, 
+  data = Specific_regression_data_5)
+
+# Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
+age_specific_ranking_5  <- gallup_main %>% 
+  filter(age_group == "Over 74",
+         YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
+  drop_na(Weighted.LS) %>% 
+  group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
+  summarize(AS.LS = sum(Weighted.LS)/sum(WGT))
+colnames(age_specific_ranking_5) <- c("COUNTRY_ISO3", "Country.name", "AS.LS")
+
+specific_WHR_summary_5 <- merge(WHR_data_fig, age_specific_ranking_5, by="COUNTRY_ISO3") %>% 
+  mutate(AS_rank = rank(-AS.LS)) 
+
+specific_contributions_5 <- specific_WHR_summary_5 %>% 
+  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(specific_WHR_summary_5$Log.GDP.per.capita, na.rm = TRUE)) * coef(Specific_regression_5)["Log.GDP.per.capita"],
+         Social.support.cont = (Social.support - min(specific_WHR_summary_5$Social.support, na.rm = TRUE)) * coef(Specific_regression_5)["Social.support"],
+         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(specific_WHR_summary_5$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Specific_regression_5)["Healthy.life.expectancy.at.birth"],
+         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_5$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
+         Generosity.cont = (Generosity - min(specific_WHR_summary_5$Generosity, na.rm = TRUE)) * coef(Specific_regression_5)["Generosity"],
+         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_5$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_5)["Perceptions.of.corruption"])
 ```
