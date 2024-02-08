@@ -372,7 +372,8 @@ calculate_specific_contributions <- function(age_group_data, regression_model) {
       Healthy.life.expectancy.at.birth.cont = (coef(regression_model)["Healthy.life.expectancy.at.birth"] * Healthy.life.expectancy.at.birth - min(coef(regression_model)["Healthy.life.expectancy.at.birth"] * age_group_data$Healthy.life.expectancy.at.birth, na.rm = TRUE)) ,
       Freedom.to.make.life.choices.cont = (coef(regression_model)["Freedom.to.make.life.choices"] * Freedom.to.make.life.choices - min(coef(regression_model)["Freedom.to.make.life.choices"] * age_group_data$Freedom.to.make.life.choices, na.rm = TRUE)),
       Generosity.cont = (coef(regression_model)["Generosity"] * Generosity - min(coef(regression_model)["Generosity"] * age_group_data$Generosity, na.rm = TRUE)),
-      Perceptions.of.corruption.cont = (coef(regression_model)["Perceptions.of.corruption"] * Perceptions.of.corruption - min(coef(regression_model)["Perceptions.of.corruption"] * age_group_data$Perceptions.of.corruption, na.rm = TRUE)) 
+      Perceptions.of.corruption.cont = (coef(regression_model)["Perceptions.of.corruption"] * Perceptions.of.corruption - min(coef(regression_model)["Perceptions.of.corruption"] * age_group_data$Perceptions.of.corruption, na.rm = TRUE)) ,
+         "Dystopia + residual" = AS.LS - (Log.GDP.per.capita.cont + Social.support.cont +  Healthy.life.expectancy.at.birth.cont + Freedom.to.make.life.choices.cont + Generosity.cont + Perceptions.of.corruption.cont)
     )
   return(specific_contributions)
 }
