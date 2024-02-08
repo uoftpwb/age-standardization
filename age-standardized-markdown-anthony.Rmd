@@ -123,7 +123,13 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
     Generosity = min(.$Generosity, na.rm = TRUE),
     Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
   ) %>% 
-  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
+  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% 
+# Impute values for Palestine
+  mutate(
+    Healthy.life.expectancy.at.birth = ifelse(Country.name == "State of Palestine", 0.292 / coef(WHR_regression)["Healthy.life.expectancy.at.birth"] + min(.$Healthy.life.expectancy.at.birth, na.rm = TRUE), Healthy.life.expectancy.at.birth),
+    Healthy.life.expectancy.at.birth.cont = ifelse(Country.name == "State of Palestine", 0.292, Healthy.life.expectancy.at.birth.cont),
+    `Dystopia + residual` = ifelse(Country.name == "State of Palestine", 1.614, `Dystopia + residual`)
+  )
 ```
 
 ### Check that our calculations for means and contributions match those reported in the summary table by WHR2023
@@ -956,6 +962,10 @@ ggplot(iceland, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
   labs(title = "Average LS by Age Group and Year Group in Iceland", x = "Age Group", y = "Average LS") +
   scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
   theme_minimal()
+```
+
+```{r}
+#write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
 ```
 
 # APPENDIX - DELETED code
