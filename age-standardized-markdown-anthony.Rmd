@@ -38,22 +38,26 @@ In order to accomplish this we need to backwards engineer the exact code require
 
 ### Reading WHR Data
 ```{r}
-# Set working directory to the parent directory of the current directory this file is in, then load the World Happiness Report data from the CSV file
+# Set working directory to the parent directory of the current directory this file is in, then load the World Happiness Report data from the CSV file. 
+# Add COUNTRY_ISO3 for merging. Kosovo is added manually. 
+# Rename Life.Ladder to WHR_score.
 WHR_data_across_years <- read.csv("Data/WHR2023Table.csv") %>%  
-  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
+  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% 
+  rename(WHR_score = Life.Ladder)
   
 # Create a summary of life ladder and raw data for predictors, using weighted mean
 # Filter the data for the years 2020 to 2022, group the data by country name, and calculate the weighted mean for each predictor, removing NA values
+# Also add COUNTRY_ISO3 for merging. Kosovo is added manually. 
 WHR_summary <- WHR_data_across_years %>% filter(year >= 2020, year <= 2022)%>% 
   group_by(Country.name) %>% 
-  summarize(Life.Ladder = weighted.mean(Life.Ladder, n),
+  summarize(WHR_score = weighted.mean(WHR_score, n),
             Log.GDP.per.capita = weighted.mean(Log.GDP.per.capita, n, na.rm = TRUE),
             Social.support = weighted.mean(Social.support, n, na.rm = TRUE),
             Healthy.life.expectancy.at.birth = weighted.mean(Healthy.life.expectancy.at.birth, n, na.rm = TRUE),
             Freedom.to.make.life.choices = weighted.mean(Freedom.to.make.life.choices, n, na.rm = TRUE),
             Generosity = weighted.mean(Generosity, n, na.rm = TRUE),
             Perceptions.of.corruption = weighted.mean(Perceptions.of.corruption, n, na.rm = TRUE)) %>% 
-  mutate(WHR_rank = rank(-Life.Ladder),
+  mutate(WHR_rank = rank(-WHR_score),
          COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
 ```
 
@@ -65,8 +69,8 @@ Following the approach of the World Happiness Report 2023 we run a regression of
 ```{r}
 # Run a fixed effects regression model using the 'feols' function from the 'fixest' package.
 WHR_regression <- feols(
-  # The dependent variable is 'Life.Ladder'.
-  Life.Ladder ~ 
+  # The dependent variable is 'WHR_score'.
+  WHR_score ~ 
   # The independent variables are six determinants of well-being.
   Log.GDP.per.capita +
   Social.support +
@@ -95,7 +99,7 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
   # Renaming the columns to more convenient names
   rename(
     Country.name = `Country name`,
-    Life.Ladder = `Ladder score`,
+    WHR_score = `Ladder score`,
     Log.GDP.per.capita = `Logged GDP per capita`,
     Social.support = `Social support`,
     Healthy.life.expectancy.at.birth = `Healthy life expectancy`,
@@ -140,7 +144,7 @@ merged_data <- WHR_summary %>%
 # We then summarize these differences, calculating the mean and max difference, and the country with the max difference for each determinant
 comparison <- merged_data %>% 
   drop_na() %>%
-  mutate(Difference.Life.Ladder = Life.Ladder.x - Life.Ladder.y,
+  mutate(Difference.Life.Ladder = WHR_score.x - WHR_score.y,
          Difference.Log.GDP.per.capita = Log.GDP.per.capita.x - Log.GDP.per.capita.y,
          Difference.Social.support = Social.support.x - Social.support.y,
          Difference.Healthy.life.expectancy.at.birth = Healthy.life.expectancy.at.birth.x - Healthy.life.expectancy.at.birth.y,
@@ -268,7 +272,7 @@ age_standardized_ranking <-  gallup_across_years %>%
 # Merge both rankings to compare, then compute differences in score and rank
 WHR_AS_comparison <- merge(WHR_summary, age_standardized_ranking, by="COUNTRY_ISO3", all=FALSE) %>%
   mutate(rank_difference = WHR_rank - AS_rank,
-         score_difference = Life.Ladder - AS_score)
+         score_difference = WHR_score - AS_score)
 ```
 
 ### Merging Data for Regression Analysis
@@ -295,14 +299,8 @@ Following the approach of the World Happiness Report 2023 we run a regression of
 
 ```{r}
 Standardized_regression <- feols(
-  # The dependent variable is 'Life.Ladder'.
-  
-  
-  # CLARIFY Life.Ladder AS AS OR WHR
-  
-  
-  
-  Life.Ladder ~ 
+  # The dependent variable is 'WeightedMeanLS'.
+  WeightedMeanLS ~ 
   # The independent variables are six determinants of well-being.
   Log.GDP.per.capita +
   Social.support +
@@ -320,42 +318,32 @@ Standardized_regression <- feols(
 summary(Standardized_regression, cluster = "Country.name")
 ```
 
-Creating Dystopia in Standardized Context
+Calculating Age-standardized scores and its predictors with weighted average of WeightedMeanLS and determinants from 2020 to 2022
 
 ```{r}
 # Calculate weighted average of life ladder and determinants from 2020 to 2022
 AS_summary <- AS_data_across_years %>% filter(year >= 2020, year <= 2022) %>% 
   group_by(Country.name) %>% 
-  summarize(AS.Life.ladder = weighted.mean(WeightedMeanLS, n),
+  summarize(AS_score = weighted.mean(WeightedMeanLS, n),
             Log.GDP.per.capita = weighted.mean(Log.GDP.per.capita, n, na.rm = TRUE),
             Social.support = weighted.mean(Social.support, n, na.rm = TRUE),
             Healthy.life.expectancy.at.birth = weighted.mean(Healthy.life.expectancy.at.birth, n, na.rm = TRUE),
             Freedom.to.make.life.choices = weighted.mean(Freedom.to.make.life.choices, n, na.rm = TRUE),
             Generosity = weighted.mean(Generosity, n, na.rm = TRUE),
             Perceptions.of.corruption = weighted.mean(Perceptions.of.corruption, n, na.rm = TRUE)) %>% 
-  mutate(WHR_rank = rank(-AS.Life.ladder),
+  mutate(WHR_rank = rank(-AS_score),
          COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c')))
 ```
 
 ```{r}
 # Summary of age-standardized life satisfaction + raw data for predictors for years of interest (2020-2022)
-# Create Dystopia for the age-standardized summary data. This should be the same as non-age-standardized summary
 Standardized_WHR_summary <- merge(WHR_data_fig, age_standardized_ranking, by="COUNTRY_ISO3") %>% 
-  mutate(AS_rank = rank(-AS_score)) %>% 
-  add_row(
-    Country.name = "Dystopia",
-    Log.GDP.per.capita = min(.$Log.GDP.per.capita, na.rm = TRUE),
-    Social.support = min(.$Social.support, na.rm = TRUE),
-    Healthy.life.expectancy.at.birth = min(.$Healthy.life.expectancy.at.birth, na.rm = TRUE),
-    Freedom.to.make.life.choices = min(.$Freedom.to.make.life.choices, na.rm = TRUE),
-    Generosity = min(.$Generosity, na.rm = TRUE),
-    Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
-  ) 
+  mutate(AS_rank = rank(-AS_score)) 
 ```
 
 Calculate Contributions
 ```{r}
-# Same as WHR. For each predictor, find the distance of the country's value from Dystopia's value. This is necessary to determine how much it contributes to the LS score. This is done by multiplying the distance from Dystopia by the coefficient corresponding to that predictor. 
+# Same as WHR. For each predictor, find the distance of the country's value from Dystopia's value (worst value for each predictor). This is necessary to determine how much it contributes to the LS score. This is done by multiplying the distance from Dystopia by the coefficient corresponding to that predictor. 
 
 Standardized_contributions <- Standardized_WHR_summary %>% 
   mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(Standardized_WHR_summary$Log.GDP.per.capita, na.rm = TRUE)) * coef(Standardized_regression)["Log.GDP.per.capita"],
@@ -384,6 +372,8 @@ calculate_specific_contributions <- function(age_group_data, regression_model) {
 
 # List to store specific contributions data frames for each age group
 specific_contributions_list <- list()
+specific_regression_data_list <- list()
+
 # Iterate over age groups
 age_groups <- c("15-29", "30-44", "45-59", "60-74", "Over 74")
 
@@ -449,32 +439,30 @@ sd(WHR_AS_comparison$AS_score)
 
 Plotting coefficients for contributions
 ```{r}
-# Create data frames for each Specific_regression_data with additional age_group column
-data1 <- Specific_regression_data_1 %>%
-  dplyr::select(c(1, 5:10, 16)) %>%
-  mutate(age_group = 1)
+# Initialise list to contain data for regression
+Specific_regression_data_list <- list()
 
-data2 <- Specific_regression_data_2 %>%
-  dplyr::select(c(1, 5:10, 16)) %>%
-  mutate(age_group = 2)
+# Loop through each age group
+for (i in seq_along(age_groups)) {
+  group <- age_groups[i]
+  
+  # Loop to create Specific_regression_data
+  age_specific_scores <- gallup_means %>% 
+    filter(age_group == group) %>% 
+    dplyr::select(COUNTRY_ISO3, year = YEAR_WAVE, AS.LS = WeightedMeanLS)
+  
+  Specific_regression_data <- merge(WHR_data_across_years, age_specific_scores, by=c("year","COUNTRY_ISO3")) 
+  
+  # Store the Specific_regression_data in the list
+  Specific_regression_data_list[[i]] <- Specific_regression_data
+  
+  # Create the data frame data_i for each age group
+  assign(paste0("data", i), Specific_regression_data %>%
+             dplyr::select(c(1, 5:10, 16)) %>%
+             mutate(age_group = i))
+}
 
-data3 <- Specific_regression_data_3 %>%
-  dplyr::select(c(1, 5:10, 16)) %>%
-  mutate(age_group = 3)
-
-data4 <- Specific_regression_data_4 %>%
-  dplyr::select(c(1, 5:10, 16)) %>%
-  mutate(age_group = 4)
-
-data5 <- Specific_regression_data_5 %>%
-  dplyr::select(c(1, 5:10, 16)) %>%
-  mutate(age_group = 5)
-
-# Combine data frames into one
-big_regression_data <- bind_rows(data1, data2, data3, data4, data5)
-
-# Convert age_group to factor
-big_regression_data <- big_regression_data %>%
+big_regression_data <- bind_rows(data1, data2, data3, data4, data5)%>%
   mutate(age_group = as.factor(age_group))
 
 # Standardize columns 2:7 and add them to big_regression_data
@@ -539,7 +527,7 @@ AS_coefficients_plot <- ggplot(big_model_summary,
 AS_coefficients_plot
 ```
 
-Hypothesis Tests
+Hypothesis Tests to compare coefficients for each predictor between each age group
 ```{r}
 joint_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Log.GDP.per.capita +
                                               age_group2:Standard.Social.support +
@@ -641,6 +629,7 @@ co_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Perceptions.of.cor
 co_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Perceptions.of.corruption = 0"))
 ```
 
+Create table of hypothesis test results
 ```{r}
 # List of your hypothesis tests for each group
 hypo_tests_list <- list(
@@ -688,13 +677,6 @@ colnames(joint_test_matrix) <- test_names
 rownames(joint_test_matrix) <- row_names
 ```
 
-Distributional Plots
-```{r}
-hist(WHR_AS_comparison$Life.Ladder, col=rgb(1,0,0,0.5), xlim=c(0,10), breaks = 30, main="Overlapping Histogram (Blue: WHR Score, Red: AS Score)", xlab="Variable")
-hist(WHR_AS_comparison$AS_score, col=rgb(0,0,1,0.5), breaks = 30, add=T)
-box()
-```
-
 World Map
 ```{r}
 WHR_AS_comparison$COUNTRY_NAME <- countrycode(WHR_AS_comparison$COUNTRY_ISO3, 'iso3c', 'country.name') 
@@ -705,7 +687,7 @@ WHR_AS_comparison <- WHR_AS_comparison %>%
   rename(region = COUNTRY_NAME)
 
 WHR_AS_comparison <- WHR_AS_comparison %>% 
-  mutate(bin = cut(score_difference, breaks = seq(-1, 1, by = 0.2), include.lowest = TRUE))
+  mutate(bin = cut(score_difference, breaks = seq(-0.5, 0.5, by = 0.1), include.lowest = TRUE))
 
 # Merge the data with the world map
 world_map <- map_data("world") %>% filter(!(region%in%c("French Southern and Antarctic Lands","Antarctica"))) 
@@ -729,12 +711,12 @@ Variance and Gini
 ```{r}
 library(DescTools)
 
-var(WHR_AS_comparison$Life.Ladder)
+var(WHR_AS_comparison$WHR_score)
 var(WHR_AS_comparison$AS_score)
 
-var.test(WHR_AS_comparison$Life.Ladder, WHR_AS_comparison$AS_score, alternative = "less")
+var.test(WHR_AS_comparison$WHR_score, WHR_AS_comparison$AS_score, alternative = "less")
 
-Gini(WHR_AS_comparison$Life.Ladder, conf.level = 0.95)
+Gini(WHR_AS_comparison$WHR_score, conf.level = 0.95)
 Gini(WHR_AS_comparison$AS_score, conf.level = 0.95)
 ```
 
@@ -747,10 +729,10 @@ age_standardized_ranking_2013 <- gallup_means %>%
   filter(age_group == "allPopulation") %>% 
   mutate(AS_score = as.numeric(WeightedMeanLS),
          AS_rank = rank(-AS_score)) %>% 
-  dplyr::select(COUNTRY_ISO3, AS_score, AS_rank)
+  dplyr::select(COUNTRY_ISO3, AS_score_2013 = AS_score, AS_rank_2013 = AS_rank)
 
 WHR_data_2013 <- read.csv("Data/WHR_Data_2013.csv") %>% 
-  dplyr::select(Country, Ladder) %>% 
+  dplyr::select(Country, WHR_score_2013 = Ladder) %>% 
   mutate(COUNTRY_ISO3 = ifelse(Country == "Kosovo", "XKX", countrycode(Country, 'country.name', 'iso3c')))
 
 WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013, by="COUNTRY_ISO3")
@@ -758,9 +740,9 @@ WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013, by
 comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by="COUNTRY_ISO3")
 
 notable_countries <- comparison_2013_2023 %>% 
-  filter(Life.Ladder > Ladder & AS_score.x < AS_score.y |
-         Life.Ladder < Ladder & AS_score.x > AS_score.y) %>% 
-  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = Life.Ladder, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
+  filter(WHR_score > WHR_score_2013 & AS_score < AS_score_2013 |
+         WHR_score < WHR_score_2013 & AS_score > AS_score_2013) %>% 
+  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score, WHR_2013 = WHR_score_2013, AS_2013 = AS_score_2013)
 
 notable_countries <- notable_countries %>% 
   mutate(WHR_diff = WHR_2023 - WHR_2013,
@@ -777,7 +759,7 @@ mean(abs(WHR_AS_comparison$score_difference))
 
 significant_changes_in_rank <- WHR_AS_comparison %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, region, Life.Ladder, AS_score, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, region, WHR_score, AS_score, rank_difference, score_difference)
 ```
 
 
@@ -797,9 +779,9 @@ for (group in names(specific_contributions_list)) {
   contributions <- specific_contributions_list[[group]]
   
   contributions <- contributions %>% 
-    mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+    mutate(WHR_rank = rank(-WHR_score)) %>% 
     mutate(rank_difference = AS_rank - WHR_rank,
-           score_difference = AS.LS - Life.Ladder)
+           score_difference = AS.LS - WHR_score)
   
   rd <- mean(abs(contributions$rank_difference))
   rank_diff <- c(rank_diff, rd)
@@ -809,7 +791,7 @@ for (group in names(specific_contributions_list)) {
   
   significant_changes_in_rank <- contributions %>% 
     filter(abs(rank_difference) >= 10) %>% 
-    dplyr::select(COUNTRY_ISO3, Country = Country.name, Life.Ladder, AS.LS, rank_difference, score_difference)
+    dplyr::select(COUNTRY_ISO3, Country = Country.name, WHR_score, AS.LS, rank_difference, score_difference)
   
   significant_changes_list[[group]] <- significant_changes_in_rank
 }
@@ -820,7 +802,7 @@ age_specific_differences <- data.frame(rank_diff, score_diff)
 Ranking Comparison Table:
 ```{r}
 ranking_comparisons <- WHR_AS_comparison %>% 
-  dplyr::select(COUNTRY_ISO3, region, Life.Ladder, WHR_rank, AS_score, AS_rank)
+  dplyr::select(COUNTRY_ISO3, region, WHR_score, WHR_rank, AS_score, AS_rank)
 
 age_specific_ranking_comparisons <- specific_contributions_1 %>% 
   dplyr::select(COUNTRY_ISO3, AG1_score = AS.LS, AG1_rank = AS_rank) %>%
@@ -882,15 +864,15 @@ ranking_comparison_visualization_data  <- data.frame(ranking_comparison_wide %>%
 
 df_long <- reshape2::melt(ranking_comparison_visualization_data, id.vars = "WHR2")
 
-# Create graphpic, red is Guatemala and blue is Serbia (two countries with biggest change in either direction)
+# Create graphpic, red is Guatemala and magenta is Serbia (two countries with biggest change in either direction)
 ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   geom_tile() +
   scale_fill_manual(
     values = c(
       viridis(137, direction = -1)[1:42],
-      "red",
+      "#FF0000",
       viridis(137, direction = -1)[44],
-      "blue",
+      "#FF00FF",
       viridis(137, direction = -1)[46:137]
     )
   ) +  # Adjust colors as needed
@@ -1474,4 +1456,11 @@ specific_contributions_5 <- specific_WHR_summary_5 %>%
          Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(specific_WHR_summary_5$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
          Generosity.cont = (Generosity - min(specific_WHR_summary_5$Generosity, na.rm = TRUE)) * coef(Specific_regression_5)["Generosity"],
          Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(specific_WHR_summary_5$Perceptions.of.corruption, na.rm = TRUE)) * coef(Specific_regression_5)["Perceptions.of.corruption"])
+```
+
+Distributional Plots
+```{r}
+hist(WHR_AS_comparison$Life.Ladder, col=rgb(1,0,0,0.5), xlim=c(0,10), breaks = 30, main="Overlapping Histogram (Blue: WHR Score, Red: AS Score)", xlab="Variable")
+hist(WHR_AS_comparison$AS_score, col=rgb(0,0,1,0.5), breaks = 30, add=T)
+box()
 ```
