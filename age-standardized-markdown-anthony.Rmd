@@ -352,12 +352,13 @@ Calculate Contributions
 # Same as WHR. For each predictor, find the distance of the country's value from Dystopia's value (worst value for each predictor). This is necessary to determine how much it contributes to the LS score. This is done by multiplying the distance from Dystopia by the coefficient corresponding to that predictor. 
 
 Standardized_contributions <- Standardized_WHR_summary %>% 
-  mutate(Log.GDP.per.capita.cont = (Log.GDP.per.capita - min(Standardized_WHR_summary$Log.GDP.per.capita, na.rm = TRUE)) * coef(Standardized_regression)["Log.GDP.per.capita"],
-         Social.support.cont = (Social.support - min(Standardized_WHR_summary$Social.support, na.rm = TRUE)) * coef(Standardized_regression)["Social.support"],
-         Healthy.life.expectancy.at.birth.cont = (Healthy.life.expectancy.at.birth - min(Standardized_WHR_summary$Healthy.life.expectancy.at.birth, na.rm = TRUE)) * coef(Standardized_regression)["Healthy.life.expectancy.at.birth"],
-         Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(Standardized_WHR_summary$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
-         Generosity.cont = (Generosity - min(Standardized_WHR_summary$Generosity, na.rm = TRUE)) * coef(Standardized_regression)["Generosity"],
-         Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(Standardized_WHR_summary$Perceptions.of.corruption, na.rm = TRUE)) * coef(Standardized_regression)["Perceptions.of.corruption"])
+  mutate(Log.GDP.per.capita.cont = (coef(Standardized_regression)["Log.GDP.per.capita"] * Log.GDP.per.capita - min(coef(Standardized_regression)["Log.GDP.per.capita"] * Standardized_WHR_summary$Log.GDP.per.capita, na.rm = TRUE)),
+         Social.support.cont = (coef(Standardized_regression)["Social.support"] * Social.support - min(coef(Standardized_regression)["Social.support"] * Standardized_WHR_summary$Social.support, na.rm = TRUE)),
+         Healthy.life.expectancy.at.birth.cont = (coef(Standardized_regression)["Healthy.life.expectancy.at.birth"] * Healthy.life.expectancy.at.birth - min(coef(Standardized_regression)["Healthy.life.expectancy.at.birth"] * Standardized_WHR_summary$Healthy.life.expectancy.at.birth, na.rm = TRUE)),
+         Freedom.to.make.life.choices.cont = (coef(Standardized_regression)["Freedom.to.make.life.choices"] * Freedom.to.make.life.choices - min(coef(Standardized_regression)["Freedom.to.make.life.choices"] * Standardized_WHR_summary$Freedom.to.make.life.choices, na.rm = TRUE)),
+         Generosity.cont = (coef(Standardized_regression)["Generosity"] * Generosity - min(coef(Standardized_regression)["Generosity"] * Standardized_WHR_summary$Generosity, na.rm = TRUE)),
+         Perceptions.of.corruption.cont = (coef(Standardized_regression)["Perceptions.of.corruption"] * Perceptions.of.corruption - min(coef(Standardized_regression)["Perceptions.of.corruption"] * Standardized_WHR_summary$Perceptions.of.corruption, na.rm = TRUE)),
+         "Dystopia + residual" = AS_score - (Log.GDP.per.capita.cont + Social.support.cont +  Healthy.life.expectancy.at.birth.cont + Freedom.to.make.life.choices.cont + Generosity.cont + Perceptions.of.corruption.cont))
 ```
 
 **Age-specific Life-satisfaction**
@@ -965,7 +966,7 @@ ggplot(iceland, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
 ```
 
 ```{r}
-#write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
+write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
 ```
 
 # APPENDIX - DELETED code
