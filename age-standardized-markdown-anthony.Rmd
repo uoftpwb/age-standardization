@@ -966,7 +966,8 @@ ggplot(iceland, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
 ```
 
 ```{r}
-write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
+# Write Standardized_contributions to csv
+#write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
 ```
 
 # APPENDIX - DELETED code
