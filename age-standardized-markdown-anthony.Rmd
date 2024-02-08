@@ -439,7 +439,7 @@ Specific_regression_2 <- feols(
 
 # Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
 age_specific_ranking_2  <- gallup_main %>% 
-  filter(age_group == "15-29",
+  filter(age_group == "30-44",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
@@ -488,7 +488,7 @@ Specific_regression_3 <- feols(
 
 # Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
 age_specific_ranking_3  <- gallup_main %>% 
-  filter(age_group == "15-29",
+  filter(age_group == "45-59",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
@@ -537,7 +537,7 @@ Specific_regression_4 <- feols(
 
 # Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
 age_specific_ranking_4  <- gallup_main %>% 
-  filter(age_group == "15-29",
+  filter(age_group == "60-74",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
@@ -586,7 +586,7 @@ Specific_regression_5 <- feols(
 
 # Find age-standardized score for each age-group. No process of weighting by year because we are starting from Gallup individual data, meaning we end up with the same values through a simple average. 
 age_specific_ranking_5  <- gallup_main %>% 
-  filter(age_group == "15-29",
+  filter(age_group == "Over 74",
          YEAR_CALENDAR >= 2020, YEAR_CALENDAR <= 2022) %>% 
   drop_na(Weighted.LS) %>% 
   group_by(COUNTRY_ISO3, COUNTRYNEW) %>%
@@ -927,17 +927,16 @@ WHR_AS_comparison_2013 <- merge(WHR_data_2013, age_standardized_ranking_2013, by
 
 comparison_2013_2023 <- merge(WHR_AS_comparison, WHR_AS_comparison_2013, by="COUNTRY_ISO3")
 
-
-#HERE FIX 
 notable_countries <- comparison_2013_2023 %>% 
-  filter(WHR_score > Ladder & AS_score.x < AS_score.y |
-         WHR_score < Ladder & AS_score.x > AS_score.y) %>% 
-  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = WHR_score, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
+  filter(Life.Ladder > Ladder & AS_score.x < AS_score.y |
+         Life.Ladder < Ladder & AS_score.x > AS_score.y) %>% 
+  dplyr::select(COUNTRY_ISO3 = COUNTRY_ISO3, Country = region, WHR_2023 = Life.Ladder, AS_2023 = AS_score.x, WHR_2013 = Ladder, AS_2013 = AS_score.y)
 
 notable_countries <- notable_countries %>% 
   mutate(WHR_diff = WHR_2023 - WHR_2013,
          AS_diff = AS_2023 - AS_2013,
          diff_of_diff = WHR_diff - AS_diff) %>% 
+  # removing CYP because it includes both Cyprus and North Cyprus
   filter(COUNTRY_ISO3 != "CYP")
 ```
 
@@ -948,120 +947,84 @@ mean(abs(WHR_AS_comparison$score_difference))
 
 significant_changes_in_rank <- WHR_AS_comparison %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, region, WHR_score, AS_score, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, region, Life.Ladder, AS_score, rank_difference, score_difference)
 ```
 
 Analysis of Age-Specific Rankings - Age Group 1
 ```{r}
-standardized_contributions_1$COUNTRY_ISO3 <- countrycode(
-  sourcevar = standardized_contributions_1$standardized_contributions_1,
-  origin = "country.name",
-  destination = "iso3c"
-)
-standardized_contributions_1$COUNTRY_ISO3[standardized_contributions_1$standardized_contributions_1 == "Kosovo"] <- "XKX"
-standardized_contributions_1 <- merge(standardized_contributions_1, WHR_ranking_summary, by = "COUNTRY_ISO3")
-standardized_contributions_1 <- standardized_contributions_1 %>%  
-  mutate(rank_difference = Rank - WHR_rank,
-         score_difference = Life.Ladder - WHR_score)
+specific_contributions_1 <- specific_contributions_1 %>%  
+  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+  mutate(rank_difference = AS_rank - WHR_rank,
+         score_difference = AS.LS - Life.Ladder)
             
-rd1 <- mean(abs(standardized_contributions_1$rank_difference))
-sd1 <- mean(abs(standardized_contributions_1$score_difference))
+rd1 <- mean(abs(specific_contributions_1$rank_difference))
+sd1 <- mean(abs(specific_contributions_1$score_difference))
 
-
-significant_changes_in_rank_1 <- standardized_contributions_1 %>% 
+significant_changes_in_rank_1 <- specific_contributions_1 %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, standardized_contributions_1, WHR_score, Life.Ladder, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
 ```
 
 Analysis of Age-Specific Rankings - Age Group 2
 ```{r}
-standardized_contributions_2$COUNTRY_ISO3 <- countrycode(
-  sourcevar = standardized_contributions_2$standardized_contributions_2,
-  origin = "country.name",
-  destination = "iso3c"
-)
-standardized_contributions_2$COUNTRY_ISO3[standardized_contributions_2$standardized_contributions_2 == "Kosovo"] <- "XKX"
-standardized_contributions_2 <- merge(standardized_contributions_2, WHR_ranking_summary, by = "COUNTRY_ISO3")
-standardized_contributions_2 <- standardized_contributions_2 %>%  
-  mutate(rank_difference = Rank - WHR_rank,
-         score_difference = Life.Ladder - WHR_score)
+specific_contributions_2 <- specific_contributions_2 %>%  
+  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+  mutate(rank_difference = AS_rank - WHR_rank,
+         score_difference = AS.LS - Life.Ladder)
             
-rd2 <- mean(abs(standardized_contributions_2$rank_difference))
-sd2 <- mean(abs(standardized_contributions_2$score_difference))
+rd2 <- mean(abs(specific_contributions_2$rank_difference))
+sd2 <- mean(abs(specific_contributions_2$score_difference))
 
-
-significant_changes_in_rank_2 <- standardized_contributions_2 %>% 
+significant_changes_in_rank_2 <- specific_contributions_2 %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, standardized_contributions_2, WHR_score, Life.Ladder, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
 ```
 
 Analysis of Age-Specific Rankings - Age Group 3
 ```{r}
-standardized_contributions_3$COUNTRY_ISO3 <- countrycode(
-  sourcevar = standardized_contributions_3$standardized_contributions_3,
-  origin = "country.name",
-  destination = "iso3c"
-)
-standardized_contributions_3$COUNTRY_ISO3[standardized_contributions_3$standardized_contributions_3 == "Kosovo"] <- "XKX"
-standardized_contributions_3 <- merge(standardized_contributions_3, WHR_ranking_summary, by = "COUNTRY_ISO3")
-standardized_contributions_3 <- standardized_contributions_3 %>%  
-  mutate(rank_difference = Rank - WHR_rank,
-         score_difference = Life.Ladder - WHR_score)
+specific_contributions_3 <- specific_contributions_3 %>%  
+  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+  mutate(rank_difference = AS_rank - WHR_rank,
+         score_difference = AS.LS - Life.Ladder)
             
-rd3 <- mean(abs(standardized_contributions_3$rank_difference))
-sd3 <- mean(abs(standardized_contributions_3$score_difference))
+rd3 <- mean(abs(specific_contributions_3$rank_difference))
+sd3 <- mean(abs(specific_contributions_3$score_difference))
 
-
-significant_changes_in_rank_3 <- standardized_contributions_3 %>% 
+significant_changes_in_rank_3 <- specific_contributions_3 %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, standardized_contributions_3, WHR_score, Life.Ladder, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
 ```
 
 Analysis of Age-Specific Rankings - Age Group 4
 ```{r}
-standardized_contributions_4$COUNTRY_ISO3 <- countrycode(
-  sourcevar = standardized_contributions_4$standardized_contributions_4,
-  origin = "country.name",
-  destination = "iso3c"
-)
-standardized_contributions_4$COUNTRY_ISO3[standardized_contributions_4$standardized_contributions_4 == "Kosovo"] <- "XKX"
-standardized_contributions_4 <- merge(standardized_contributions_4, WHR_ranking_summary, by = "COUNTRY_ISO3")
-standardized_contributions_4 <- standardized_contributions_4 %>%  
-  mutate(rank_difference = Rank - WHR_rank,
-         score_difference = Life.Ladder - WHR_score)
+specific_contributions_4 <- specific_contributions_4 %>%  
+  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+  mutate(rank_difference = AS_rank - WHR_rank,
+         score_difference = AS.LS - Life.Ladder)
             
-rd4 <- mean(abs(standardized_contributions_4$rank_difference))
-sd4 <- mean(abs(standardized_contributions_4$score_difference))
+rd4 <- mean(abs(specific_contributions_4$rank_difference))
+sd4 <- mean(abs(specific_contributions_4$score_difference))
 
-
-significant_changes_in_rank_4 <- standardized_contributions_4 %>% 
+significant_changes_in_rank_4 <- specific_contributions_4 %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, standardized_contributions_4, WHR_score, Life.Ladder, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
 ```
 
 Analysis of Age-Specific Rankings - Age Group 5
 ```{r}
-standardized_contributions_5$COUNTRY_ISO3 <- countrycode(
-  sourcevar = standardized_contributions_5$standardized_contributions_5,
-  origin = "country.name",
-  destination = "iso3c"
-)
-standardized_contributions_5$COUNTRY_ISO3[standardized_contributions_5$standardized_contributions_5 == "Kosovo"] <- "XKX"
-standardized_contributions_5 <- merge(standardized_contributions_5, WHR_ranking_summary, by = "COUNTRY_ISO3")
-standardized_contributions_5 <- standardized_contributions_5 %>%  
-  mutate(rank_difference = Rank - WHR_rank,
-         score_difference = Life.Ladder - WHR_score)
+specific_contributions_5 <- specific_contributions_5 %>%  
+  mutate(WHR_rank = rank(-Life.Ladder)) %>% 
+  mutate(rank_difference = AS_rank - WHR_rank,
+         score_difference = AS.LS - Life.Ladder)
             
-rd5 <- mean(abs(standardized_contributions_5$rank_difference))
-sd5 <- mean(abs(standardized_contributions_5$score_difference))
+rd5 <- mean(abs(specific_contributions_5$rank_difference))
+sd5 <- mean(abs(specific_contributions_5$score_difference))
 
-
-
-significant_changes_in_rank_5 <- standardized_contributions_5 %>% 
+significant_changes_in_rank_5 <- specific_contributions_5 %>% 
   filter(abs(rank_difference) >= 10) %>% 
-  dplyr::select(COUNTRY_ISO3, standardized_contributions_5, WHR_score, Life.Ladder, rank_difference, score_difference)
+  dplyr::select(COUNTRY_ISO3, Country = Country.name.x, Life.Ladder, AS.LS, rank_difference, score_difference)
 
-
+# Creating table summarizing how much change is in each rank and score for each age group
 rank_diff <- c(rd1, rd2, rd3, rd4, rd5)
 score_diff <- c(sd1, sd2, sd3, sd4, sd5)
 age_specific_differences <- data.frame(rank_diff, score_diff)
@@ -1071,29 +1034,30 @@ age_specific_differences <- data.frame(rank_diff, score_diff)
 Ranking Comparison Table:
 ```{r}
 ranking_comparisons <- WHR_AS_comparison %>% 
-  dplyr::select(COUNTRY_ISO3, region, WHR_score, WHR_rank, AS_score, AS_rank)
+  dplyr::select(COUNTRY_ISO3, region, Life.Ladder, WHR_rank, AS_score, AS_rank)
 
-age_specific_ranking_comparisons <- standardized_contributions_1 %>% 
-  dplyr::select(COUNTRY_ISO3, AG1_score = Life.Ladder, AG1_rank = Rank) %>%
+age_specific_ranking_comparisons <- specific_contributions_1 %>% 
+  dplyr::select(COUNTRY_ISO3, AG1_score = AS.LS, AG1_rank = AS_rank) %>%
   left_join(
-    standardized_contributions_2 %>% dplyr::select(COUNTRY_ISO3, AG2_score = Life.Ladder, AG2_rank = Rank),
+    specific_contributions_2 %>% dplyr::select(COUNTRY_ISO3, AG2_score = AS.LS, AG2_rank = AS_rank),
     by = "COUNTRY_ISO3"
   ) %>%
   left_join(
-    standardized_contributions_3 %>% dplyr::select(COUNTRY_ISO3, AG3_score = Life.Ladder, AG3_rank = Rank),
+    specific_contributions_3 %>% dplyr::select(COUNTRY_ISO3, AG3_score =AS.LS, AG3_rank = AS_rank),
     by = "COUNTRY_ISO3"
   ) %>%
   left_join(
-    standardized_contributions_4 %>% dplyr::select(COUNTRY_ISO3, AG4_score = Life.Ladder, AG4_rank = Rank),
+    specific_contributions_4 %>% dplyr::select(COUNTRY_ISO3, AG4_score = AS.LS, AG4_rank = AS_rank),
     by = "COUNTRY_ISO3"
   ) %>%
   left_join(
-    standardized_contributions_5 %>% dplyr::select(COUNTRY_ISO3, AG5_score = Life.Ladder, AG5_rank = Rank),
+    specific_contributions_5 %>% dplyr::select(COUNTRY_ISO3, AG5_score = AS.LS, AG5_rank = AS_rank),
     by = "COUNTRY_ISO3"
   ) 
 
 ranking_comparisons <- left_join(ranking_comparisons, age_specific_ranking_comparisons, by = "COUNTRY_ISO3")
 
+# Comparing ranks for top and bottom 10 in original WHR ranking
 ranking_comparisons_summary <- ranking_comparisons %>% 
   filter(WHR_rank <= 10 | WHR_rank >= 128)
 ```
@@ -1104,9 +1068,9 @@ ranking_comparison_wide <- ranking_comparisons %>%
   dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG4_rank)
 ranking_comparison_wide <- ranking_comparison_wide[order(ranking_comparison_wide$WHR_rank), ]
 
-WHR_and_AS <- ranking_comparison_wide %>% select('WHR_rank', 'AS_rank')
-WHR_and_AG1 <- ranking_comparison_wide %>% select('WHR_rank', 'AG1_rank')
-WHR_and_AG4 <- ranking_comparison_wide %>% select('WHR_rank', 'AG4_rank')
+WHR_and_AS <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AS_rank')
+WHR_and_AG1 <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AG1_rank')
+WHR_and_AG4 <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AG4_rank')
 
 WHR_and_AS <- WHR_and_AS %>%
   arrange(`AS_rank`)
@@ -1121,26 +1085,27 @@ WHR_and_AG4 <- WHR_and_AG4 %>%
 WHR_and_AG4$AG4_rank <- WHR_and_AG4$WHR
 
 # This is ordered by each ranking, but the value represents the WHR Rank of the country in that spot.
-ranking_comparison_visualization_data  <- data.frame(ranking_comparison_wide %>% select(WHR_rank),
-                                                      WHR_and_AS %>% select(AS_rank),
-                                                      WHR_and_AG1 %>% select(AG1_rank),
-                                                      WHR_and_AG4 %>% select(AG4_rank),
-                                                     ranking_comparison_wide %>% select(WHR_rank)) %>% 
-  select("WHR" = WHR_rank, "Age-Standardized" = AS_rank, "Age Group 1" = AG1_rank, 
+ranking_comparison_visualization_data  <- data.frame(ranking_comparison_wide %>% dplyr::select(WHR_rank),
+                                                      WHR_and_AS %>% dplyr::select(AS_rank),
+                                                      WHR_and_AG1 %>% dplyr::select(AG1_rank),
+                                                      WHR_and_AG4 %>% dplyr::select(AG4_rank),
+                                                     ranking_comparison_wide %>% dplyr::select(WHR_rank)) %>% 
+  dplyr::select("WHR" = WHR_rank, "Age-Standardized" = AS_rank, "Age Group 1" = AG1_rank, 
          "Age Group 4" = AG4_rank, "WHR2" = WHR_rank.1)
 
 
 df_long <- reshape2::melt(ranking_comparison_visualization_data, id.vars = "WHR2")
 
+# Create graphpic, red is Guatemala and blue is Serbia (two countries with biggest change in either direction)
 ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   geom_tile() +
   scale_fill_manual(
     values = c(
       viridis(137, direction = -1)[1:42],
       "red",
-      viridis(137, direction = -1)[44:49],
+      viridis(137, direction = -1)[44],
       "blue",
-      viridis(137, direction = -1)[51:137]
+      viridis(137, direction = -1)[46:137]
     )
   ) +  # Adjust colors as needed
   labs(title = "Ranking Comparison Visualization", x = "Ranking Type", y = "Ranking") +
@@ -1149,8 +1114,17 @@ ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   guides(fill = guide_colourbar(reverse = TRUE, title = "Ranking"))
 ```
 
-Researching Saudi Arabia and Iceland
+Researching Egypt and Iceland
 ```{r}
+# Egypt has decreasing WHR score but increasing AS score
+age_matrix <- gallup_main %>%
+  filter(!is.na(age_group),
+         !is.na(Weighted.LS)) %>% 
+  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
+  arrange(YEAR_CALENDAR, age_group)
+
 age_n_matrix <- gallup_main %>%
   filter(!is.na(age_group),
          !is.na(Weighted.LS)) %>% 
@@ -1159,10 +1133,10 @@ age_n_matrix <- gallup_main %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>%
   arrange(YEAR_CALENDAR, age_group)
 
-egypt_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "EGY") %>% 
+egypt_n <- age_n_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "EGY") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-egypt <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "EGY") %>% 
+egypt <- age_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "EGY") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
 egypt = merge(egypt, egypt_n, by=c("YEAR_CALENDAR", "age_group"))
@@ -1188,10 +1162,11 @@ ggplot(egypt, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
 
 
 ```{r}
-iceland <- age_matrix %>% select("YEAR_CALENDAR", "age_group", "ISL") %>% 
+# Iceland has increasing WHR score but decreasing AS score
+iceland <- age_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "ISL") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
-iceland_n <- age_n_matrix %>% select("YEAR_CALENDAR", "age_group", "ISL") %>% 
+iceland_n <- age_n_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "ISL") %>% 
   filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
 
 iceland = merge(iceland, iceland_n, by=c("YEAR_CALENDAR", "age_group"))
@@ -1214,36 +1189,6 @@ ggplot(iceland, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
   scale_fill_manual(values = c("2010-2012" = "lightblue", "2020-2022" = "salmon")) +  # Adjust colors as needed
   theme_minimal()
 ```
-
-```{r}
-gallup_main %>%
-  filter(!is.na(age_group),
-         !is.na(Weighted.LS)) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
-  summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
-  arrange(YEAR_CALENDAR, age_group)
-
-test <- gallup_main %>% 
-  filter(!is.na(age_group),
-         !is.na(Weighted.LS)) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
-  summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
-  arrange(YEAR_CALENDAR, age_group) %>% 
-  filter(YEAR_CALENDAR == 2020) %>%
-  select(which(colSums(is.na(.)) < nrow(.)))
-test <- test[, 2:ncol(test)]
-
-
-#gallup_age_2020 <- gallup_main %>% 
-  filter(!is.na(age_group)) %>% 
-  filter(YEAR_CALENDAR == 2020) %>% 
-  group_by(COUNTRY_ISO3, age_group, .drop = FALSE) %>% 
-  summarise(WeightedMeanLS = (sum(Weighted.LS, na.rm=T)/sum(WGT, na.rm=T))) %>%
-  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS)
-```
-
 
 # APPENDIX - DELETED code
 
