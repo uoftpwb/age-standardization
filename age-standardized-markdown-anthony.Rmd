@@ -232,6 +232,8 @@ gallup_main <- gallup_main %>%
 standard_population <- c(24.62, 21.35, 15.96, 8.89, 3.06)
 
 # Calculate the weighted mean life satisfaction (WP16) for each country, year, and age group in the Gallup data from 2020 to 2022.
+
+# TODO: YEAR_WAVE used instead of YEAR_CALENDAR
 gallup_means <- gallup_main %>%
   group_by(COUNTRY_ISO3, YEAR_WAVE, age_group) %>%
   summarise(WeightedMeanLS = weighted.mean(WP16,WGT, na.rm=TRUE), n=n(), .groups = "drop") %>%
@@ -506,6 +508,13 @@ across_age_model_summary <- summary(across_age_model)$coefficients %>%
                        "Perceptions.of.corruption")) %>%
   rename(Estimate = ".", group = group) 
 
+
+# GROUP BY variable
+# SORT BY group
+# MUTATE each of second-fifth element + first element
+# IF group == 1
+# ELSE variable = first variable + variable
+
 a <- across_age_model_summary$Estimate[1:6]
 b <- as.numeric(a[1]) + as.numeric(across_age_model_summary$Estimate[7:10])
 c <- as.numeric(a[2]) + as.numeric(across_age_model_summary$Estimate[11:14])
@@ -523,8 +532,9 @@ AS_coefficients_plot
 ```
 
 Hypothesis Tests to compare coefficients for each predictor between each age group
+TODO explain
 ```{r}
-# Joint hypothesis test for all predictors, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+# Joint hypothesis test for all predictors, comparing age groups 1-2, 2-3, 3-4, 4-5, and 1-5
 joint_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Log.GDP.per.capita +
                                               age_group2:Standard.Social.support +
                                               age_group2:Standard.Healthy.life.expectancy.at.birth + 
@@ -808,9 +818,6 @@ Ranking Comparison Table:
 ranking_comparisons <- WHR_AS_comparison %>% 
   dplyr::select(COUNTRY_ISO3, region, WHR_score, WHR_rank, AS_score, AS_rank)
 
-install.packages("purr")
-library(purr)
-
 columns_to_select <- c("COUNTRY_ISO3", "AS.LS", "AS_rank")
 age_specific_ranking_comparisons <- specific_contributions_list %>% 
    Reduce(function(dtf1, dtf2) {
@@ -902,6 +909,7 @@ num_levels <- length(levels(factor(df_long$value)))
 labels <- rep(c("Viridis", "Guatemala", "Serbia"), length.out = num_levels)
 
 # Use this vector in your scale_fill_manual() function
+# Black is Guatemala, White is Serbia
 ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   geom_tile() +
   scale_fill_manual(
