@@ -26,6 +26,7 @@ library(GGally)
 library(maps)
 library(viridis)
 library(multcomp)
+library(tibble)
 
 knitr::opts_knit$set(root.dir = dirname(dirname(rstudioapi::getActiveDocumentContext()$path)))
 ```
@@ -35,12 +36,12 @@ Our final intention is to replicate the aggregation and visualization methods in
 
 In order to accomplish this we need to backwards engineer the exact code required to replicate their process. We do this first to verify the method, and then replicate with age-standardized averages in the next section.
 
-
 ### Reading WHR Data
 ```{r}
 # Set working directory to the parent directory of the current directory this file is in, then load the World Happiness Report data from the CSV file. 
 # Add COUNTRY_ISO3 for merging. Kosovo is added manually. 
 # Rename Life.Ladder to WHR_score.
+# "Data/WHR2023Table.csv" is data obtained directly from the World Happiness Report Appendices & Data. n is a column added manually from the Statistical Appendix 1 for Chapter 2.
 WHR_data_across_years <- read.csv("Data/WHR2023Table.csv") %>%  
   mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% # Somaliland region and Kosovo was not matched with the countrycode(). Countrycode for Kosovo is added manually, but Somaliland region is missing for 2020 to 2022, we ignore it here.
   rename(WHR_score = Life.Ladder)
@@ -94,6 +95,7 @@ summary(WHR_regression, cluster = "Country.name")
 In the presentation of the WHR2023 data, the contribution to wellbeing from each factor is calculated as the difference from the contribution for the country with the lowest level of that factor (or the highest if the effect is negative). We calculate that value here.
 
 ```{r}
+# "Data/DataForFigure2.1WHR2023.xls" is data obtained directly from the World Happiness Report Appendices & Data.
 # Reading the cleaned Gallup World Poll data "DataForFigure2.1WHR2023.xls" from the "Data" directory
 WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
   # Renaming the columns to more convenient names
@@ -124,7 +126,9 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
     Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
   ) %>% 
   mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% 
-# Impute values for Palestine
+# Impute values for Palestine because data is missing from WHR Data, using backward engineering.
+# "0.292" comes from Palestine's "Explained by Healthy life expectancy" value in Figure 2.1 from WHR Chapter 2.
+# Similarly, "1.164" comes from Palestine's "Explained by Dystopia + residual" value. 
   mutate(
     Healthy.life.expectancy.at.birth = ifelse(Country.name == "State of Palestine", 0.292 / coef(WHR_regression)["Healthy.life.expectancy.at.birth"] + min(.$Healthy.life.expectancy.at.birth, na.rm = TRUE), Healthy.life.expectancy.at.birth),
     Healthy.life.expectancy.at.birth.cont = ifelse(Country.name == "State of Palestine", 0.292, Healthy.life.expectancy.at.birth.cont),
@@ -144,25 +148,25 @@ merged_data <- WHR_summary %>%
          Freedom.to.make.life.choices.cont = (Freedom.to.make.life.choices - min(WHR_data_fig$Freedom.to.make.life.choices, na.rm = TRUE)) * coef(WHR_regression)["Freedom.to.make.life.choices"],
          Generosity.cont = (Generosity - min(WHR_data_fig$Generosity, na.rm = TRUE)) * coef(WHR_regression)["Generosity"],
          Perceptions.of.corruption.cont = (Perceptions.of.corruption - max(WHR_data_fig$Perceptions.of.corruption, na.rm = TRUE)) * coef(WHR_regression)["Perceptions.of.corruption"]) %>%
-  merge(WHR_data_fig, by.x = "Country.name", by.y = "Country.name", all = TRUE)
+  merge(WHR_data_fig, by.x = "Country.name", by.y = "Country.name", all = TRUE, suffixes = c("_Replicated", "_WHR"))
 
 # We calculate the difference between the WHR reported and the calculated values for each determinant of wellbeing
 # We then summarize these differences, calculating the mean and max difference, and the country with the max difference for each determinant
 comparison <- merged_data %>% 
   drop_na() %>%
-  mutate(Difference.Life.Ladder = WHR_score.x - WHR_score.y,
-         Difference.Log.GDP.per.capita = Log.GDP.per.capita.x - Log.GDP.per.capita.y,
-         Difference.Social.support = Social.support.x - Social.support.y,
-         Difference.Healthy.life.expectancy.at.birth = Healthy.life.expectancy.at.birth.x - Healthy.life.expectancy.at.birth.y,
-         Difference.Freedom.to.make.life.choices = Freedom.to.make.life.choices.x - Freedom.to.make.life.choices.y,
-         Difference.Generosity = Generosity.x - Generosity.y,
-         Difference.Perceptions.of.corruption = Perceptions.of.corruption.x - Perceptions.of.corruption.y,
-         Difference.Log.GDP.per.capita.cont = Log.GDP.per.capita.cont.x - Log.GDP.per.capita.cont.y,
-         Difference.Social.support.cont = Social.support.cont.x - Social.support.cont.y,
-         Difference.Healthy.life.expectancy.at.birth.cont = Healthy.life.expectancy.at.birth.cont.x - Healthy.life.expectancy.at.birth.cont.y,
-         Difference.Freedom.to.make.life.choices.cont = Freedom.to.make.life.choices.cont.x - Freedom.to.make.life.choices.cont.y,
-         Difference.Generosity.cont = Generosity.cont.x - Generosity.cont.y,
-         Difference.Perceptions.of.corruption.cont = Perceptions.of.corruption.cont.x - Perceptions.of.corruption.cont.y) %>%
+  mutate(Difference.Life.Ladder = WHR_score_Replicated - WHR_score_WHR,
+         Difference.Log.GDP.per.capita = Log.GDP.per.capita_Replicated - Log.GDP.per.capita_WHR,
+         Difference.Social.support = Social.support_Replicated - Social.support_WHR,
+         Difference.Healthy.life.expectancy.at.birth = Healthy.life.expectancy.at.birth_Replicated - Healthy.life.expectancy.at.birth_WHR,
+         Difference.Freedom.to.make.life.choices = Freedom.to.make.life.choices_Replicated - Freedom.to.make.life.choices_WHR,
+         Difference.Generosity = Generosity_Replicated - Generosity_WHR,
+         Difference.Perceptions.of.corruption = Perceptions.of.corruption_Replicated - Perceptions.of.corruption_WHR,
+         Difference.Log.GDP.per.capita.cont = Log.GDP.per.capita.cont_Replicated - Log.GDP.per.capita.cont_WHR,
+         Difference.Social.support.cont = Social.support.cont_Replicated - Social.support.cont_WHR,
+         Difference.Healthy.life.expectancy.at.birth.cont = Healthy.life.expectancy.at.birth.cont_Replicated - Healthy.life.expectancy.at.birth.cont_WHR,
+         Difference.Freedom.to.make.life.choices.cont = Freedom.to.make.life.choices.cont_Replicated - Freedom.to.make.life.choices.cont_WHR,
+         Difference.Generosity.cont = Generosity.cont_Replicated - Generosity.cont_WHR,
+         Difference.Perceptions.of.corruption.cont = Perceptions.of.corruption.cont_Replicated - Perceptions.of.corruption.cont_WHR) %>%
   summarise(across(starts_with("Difference."), list(mean = ~mean(abs(.x)), max = ~max(abs(.x)), country_with_max_diff = ~Country.name[which.max(abs(.x))])))
 
 # We then format this data for presentation, pivoting the data to a long format, separating the variable names into separate columns, and then pivoting back to a wide format
@@ -208,9 +212,6 @@ We use the WHO Standard Population to divide our data into 5 categories.
 # Load the cleaned Gallup World Poll data
 gallup_main <- readRDS("Data/(231101)GWP_cleaned_ageStandardizedWellbeing.rds")
 
-# Create a new column 'Weighted.LS' by multiplying 'WGT' and 'WP16' columns, converting the result to numeric
-gallup_main$Weighted.LS <- as.numeric(gallup_main$WGT*gallup_main$WP16)
-
 # Add a new column 'age_group' to the data, categorizing the 'WP1220' column into age groups
 gallup_main <- gallup_main %>% 
   mutate(
@@ -226,8 +227,9 @@ gallup_main <- gallup_main %>%
 
 ```{r}
 # Define the standard population weights for each age group. These weights are used to adjust the data for age standardization.
-# Standard population by WHO includes from age 0. Thus, these weights are reweighted to be only from Age 15 or above. Some rounding error means that these add up to 1.000474. This isn't a concern as weighted means will reweight all weights to equal 1 automatically.
-standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441, 0.1203791469, 0.04150304671)
+# Information about the WHO's standard population here: https://cdn.who.int/media/docs/default-source/gho-documents/global-health-estimates/gpe_discussion_paper_series_paper31_2001_age_standardization_rates.pdf
+# Standard population by WHO includes from age 0. Thus, these weights are re-weighted to be only from Age 15 or above by adding adding together the proportions which are in 5 year intervals from the WHO, to get 15 year age groups starting from age 15. Although the sum of these do not equal 100 anymore, this isn't a concern as weighted means will reweight all weights to equal 1 automatically.
+standard_population <- c(24.62, 21.35, 15.96, 8.89, 3.06)
 
 # Calculate the weighted mean life satisfaction (WP16) for each country, year, and age group in the Gallup data from 2020 to 2022.
 gallup_means <- gallup_main %>%
@@ -293,7 +295,7 @@ AS_data_across_years <- merge(WHR_data_across_years,
                               by.x = c("COUNTRY_ISO3", "year"), 
                               by.y = c("COUNTRY_ISO3", "YEAR_WAVE"), 
                               all = FALSE)  %>% 
-  dplyr::select(-n.x, -X, -X.1) %>% 
+  dplyr::select(-n.x) %>% 
   rename(n = n.y)
 
 # Number of rows in WHR_data_across_years and AS_data_across_years is a bit different. I wonder why.
@@ -381,9 +383,8 @@ calculate_specific_contributions <- function(age_group_data, regression_model) {
 
 # List to store specific contributions data frames for each age group
 specific_contributions_list <- list()
-specific_regression_data_list <- list()
 
-# Initialise list to contain data for regression
+# Initialize list to contain data for regression
 Specific_regression_data_list <- list()
 
 # Iterate over age groups
@@ -404,7 +405,7 @@ for (i in seq_along(age_groups)) {
   
   # Create the data frame data_i for each age group
   assign(paste0("data", i), Specific_regression_data %>%
-             dplyr::select(c(1, 5:10, 16)) %>%
+             dplyr::select(c(1, 5:10, 14)) %>%
              mutate(age_group = i))
 
   # Perform regression
@@ -438,13 +439,6 @@ for (i in seq_along(age_groups)) {
 }
 
 # Now, specific_contributions_list contains specific contributions data frames for each age group
-# Access specific contributions for an age group like specific_contributions_list[["15-29"]]
-
-specific_contributions_1 <- specific_contributions_list[["15-29"]]
-specific_contributions_2 <- specific_contributions_list[["30-44"]]
-specific_contributions_3 <- specific_contributions_list[["45-59"]]
-specific_contributions_4 <- specific_contributions_list[["60-74"]]
-specific_contributions_5 <- specific_contributions_list[["Over 74"]]
 ```
 
 **Further Analysis**
@@ -455,7 +449,7 @@ significant_difference <- WHR_AS_comparison %>%
 
 significant_difference_countries <- significant_difference$COUNTRY_ISO3
 
-sd(WHR_AS_comparison$Life.Ladder)
+sd(WHR_AS_comparison$WHR_score)
 sd(WHR_AS_comparison$AS_score)
 ```
 
@@ -467,7 +461,7 @@ across_age_regression_data <- bind_rows(data1, data2, data3, data4, data5)%>%
 
 # Standardize columns 2:7 and add them to across_age_regression_data
 stanardized_across_age_regression_data <- across_age_regression_data %>%
-  dplyr::select(2:7) %>%
+  dplyr::select(Log.GDP.per.capita:Perceptions.of.corruption) %>%
   scale() %>%
   as.data.frame() %>%
   setNames(paste0("Standard.", colnames(.))) %>%
@@ -484,7 +478,8 @@ across_age_model <- feols(
 # Create data frame for model summary
 across_age_model_summary <- summary(across_age_model)$coefficients %>%
   as.data.frame() %>%
-  slice(-(1:4)) %>%
+  rownames_to_column(var = "RowName") %>%
+  filter(!(RowName %in% c("age_group2", "age_group3", "age_group4", "age_group5"))) %>%
   mutate(group = as.factor(c(1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 2, 3, 4, 5,
                              2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5)),
          variables = c("Log.GDP.per.capita", "Social.support", 
@@ -529,13 +524,14 @@ AS_coefficients_plot
 
 Hypothesis Tests to compare coefficients for each predictor between each age group
 ```{r}
-joint_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Log.GDP.per.capita +
+# Joint hypothesis test for all predictors, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+joint_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Log.GDP.per.capita +
                                               age_group2:Standard.Social.support +
                                               age_group2:Standard.Healthy.life.expectancy.at.birth + 
                                               age_group2:Standard.Freedom.to.make.life.choices +                                                                      age_group2:Standard.Generosity -
                                               age_group2:Standard.Perceptions.of.corruption = 0"))
 
-joint_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Log.GDP.per.capita + 
+joint_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Log.GDP.per.capita + 
                                               age_group3:Standard.Social.support +
                                               age_group3:Standard.Healthy.life.expectancy.at.birth + 
                                               age_group3:Standard.Freedom.to.make.life.choices + 
@@ -548,7 +544,7 @@ joint_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Log.GDP.per.cap
                                               age_group2:Standard.Generosity +
                                               age_group2:Standard.Perceptions.of.corruption = 0"))
 
-joint_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Log.GDP.per.capita + 
+joint_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Log.GDP.per.capita + 
                                               age_group4:Standard.Social.support +
                                               age_group4:Standard.Healthy.life.expectancy.at.birth + 
                                               age_group4:Standard.Freedom.to.make.life.choices + 
@@ -561,7 +557,7 @@ joint_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Log.GDP.per.cap
                                               age_group3:Standard.Generosity +
                                               age_group3:Standard.Perceptions.of.corruption = 0"))
 
-joint_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Log.GDP.per.capita + 
+joint_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Log.GDP.per.capita + 
                                               age_group5:Standard.Social.support +
                                               age_group5:Standard.Healthy.life.expectancy.at.birth + 
                                               age_group5:Standard.Freedom.to.make.life.choices +
@@ -574,59 +570,65 @@ joint_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Log.GDP.per.cap
                                               age_group4:Standard.Generosity +
                                               age_group4:Standard.Perceptions.of.corruption = 0"))
 
-joint_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Log.GDP.per.capita +
+joint_hypo_15 <- glht(across_age_model, linfct = c("age_group5:Standard.Log.GDP.per.capita +
                                               age_group5:Standard.Social.support +
                                               age_group5:Standard.Healthy.life.expectancy.at.birth + 
                                               age_group5:Standard.Freedom.to.make.life.choices +                                                                      age_group5:Standard.Generosity -
                                               age_group5:Standard.Perceptions.of.corruption = 0"))
 
-gdp_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Log.GDP.per.capita = 0"))
-gdp_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Log.GDP.per.capita -
+# Joint hypothesis test for GDP predictor, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+gdp_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Log.GDP.per.capita = 0"))
+gdp_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Log.GDP.per.capita -
                                           age_group2:Standard.Log.GDP.per.capita = 0"))
-gdp_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Log.GDP.per.capita -
+gdp_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Log.GDP.per.capita -
                                           age_group3:Standard.Log.GDP.per.capita = 0"))
-gdp_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Log.GDP.per.capita -
+gdp_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Log.GDP.per.capita -
                                           age_group4:Standard.Log.GDP.per.capita = 0"))
-gdp_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Log.GDP.per.capita = 0"))
+gdp_hypo_15 <- glht(across_age_model, linfct = c("age_group5:Standard.Log.GDP.per.capita = 0"))
 
-ss_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Social.support = 0"))
-ss_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Social.support - age_group2:Standard.Social.support = 0"))
-ss_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Social.support - age_group3:Standard.Social.support = 0"))
-ss_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Social.support - age_group4:Standard.Social.support = 0"))
-ss_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Social.support = 0"))
+# Joint hypothesis test for social support predictor, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+ss_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Social.support = 0"))
+ss_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Social.support - age_group2:Standard.Social.support = 0"))
+ss_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Social.support - age_group3:Standard.Social.support = 0"))
+ss_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Social.support - age_group4:Standard.Social.support = 0"))
+ss_hypo_15 <- glht(across_age_model, linfct = c("age_group5:Standard.Social.support = 0"))
 
-le_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Healthy.life.expectancy.at.birth = 0"))
-le_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Healthy.life.expectancy.at.birth -
+# Joint hypothesis test for healthy life expectancy predictor, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+le_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Healthy.life.expectancy.at.birth = 0"))
+le_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Healthy.life.expectancy.at.birth -
                                          age_group2:Standard.Healthy.life.expectancy.at.birth = 0"))
-le_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Healthy.life.expectancy.at.birth -
+le_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Healthy.life.expectancy.at.birth -
                                          age_group3:Standard.Healthy.life.expectancy.at.birth = 0"))
-le_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Healthy.life.expectancy.at.birth -
+le_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Healthy.life.expectancy.at.birth -
                                          age_group4:Standard.Healthy.life.expectancy.at.birth = 0"))
-le_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Healthy.life.expectancy.at.birth = 0"))
+le_hypo_15 <- glht(across_age_model, linfct = c("age_group5:Standard.Healthy.life.expectancy.at.birth = 0"))
 
-fr_hypo_12<- glht(big_model, linfct = c("age_group2:Standard.Freedom.to.make.life.choices = 0"))
-fr_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Freedom.to.make.life.choices -
+# Joint hypothesis test for freedom to make life choices predictor, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+fr_hypo_12<- glht(across_age_model, linfct = c("age_group2:Standard.Freedom.to.make.life.choices = 0"))
+fr_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Freedom.to.make.life.choices -
                                          age_group2:Standard.Freedom.to.make.life.choices = 0"))
-fr_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Freedom.to.make.life.choices -
+fr_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Freedom.to.make.life.choices -
                                          age_group3:Standard.Freedom.to.make.life.choices = 0"))
-fr_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Freedom.to.make.life.choices -
+fr_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Freedom.to.make.life.choices -
                                          age_group4:Standard.Freedom.to.make.life.choices = 0"))
-fr_hypo_15<- glht(big_model, linfct = c("age_group5:Standard.Freedom.to.make.life.choices = 0"))
+fr_hypo_15<- glht(across_age_model, linfct = c("age_group5:Standard.Freedom.to.make.life.choices = 0"))
 
-ge_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Generosity = 0"))
-ge_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Generosity - age_group2:Standard.Generosity = 0"))
-ge_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Generosity - age_group3:Standard.Generosity = 0"))
-ge_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Generosity - age_group4:Standard.Generosity = 0"))
-ge_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Generosity = 0"))
+# Joint hypothesis test for generosity predictor, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+ge_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Generosity = 0"))
+ge_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Generosity - age_group2:Standard.Generosity = 0"))
+ge_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Generosity - age_group3:Standard.Generosity = 0"))
+ge_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Generosity - age_group4:Standard.Generosity = 0"))
+ge_hypo_15 <- glht(across_age_model, linfct = c("age_group5:Standard.Generosity = 0"))
 
-co_hypo_12 <- glht(big_model, linfct = c("age_group2:Standard.Perceptions.of.corruption = 0"))
-co_hypo_23 <- glht(big_model, linfct = c("age_group3:Standard.Perceptions.of.corruption - 
+# Joint hypothesis test for perception of corruption predictor, comparing age group 1-2, 2-3, 3-4, 4-5, and 1-5
+co_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Perceptions.of.corruption = 0"))
+co_hypo_23 <- glht(across_age_model, linfct = c("age_group3:Standard.Perceptions.of.corruption - 
                                          age_group2:Standard.Perceptions.of.corruption = 0"))
-co_hypo_34 <- glht(big_model, linfct = c("age_group4:Standard.Perceptions.of.corruption - 
+co_hypo_34 <- glht(across_age_model, linfct = c("age_group4:Standard.Perceptions.of.corruption - 
                                          age_group3:Standard.Perceptions.of.corruption = 0"))
-co_hypo_45 <- glht(big_model, linfct = c("age_group5:Standard.Perceptions.of.corruption - 
+co_hypo_45 <- glht(across_age_model, linfct = c("age_group5:Standard.Perceptions.of.corruption - 
                                          age_group4:Standard.Perceptions.of.corruption = 0"))
-co_hypo_15 <- glht(big_model, linfct = c("age_group5:Standard.Perceptions.of.corruption = 0"))
+co_hypo_15 <- glht(across_age_model, linfct = c("age_group5:Standard.Perceptions.of.corruption = 0"))
 ```
 
 Create table of hypothesis test results
@@ -806,24 +808,27 @@ Ranking Comparison Table:
 ranking_comparisons <- WHR_AS_comparison %>% 
   dplyr::select(COUNTRY_ISO3, region, WHR_score, WHR_rank, AS_score, AS_rank)
 
-age_specific_ranking_comparisons <- specific_contributions_1 %>% 
-  dplyr::select(COUNTRY_ISO3, AG1_score = AS.LS, AG1_rank = AS_rank) %>%
-  left_join(
-    specific_contributions_2 %>% dplyr::select(COUNTRY_ISO3, AG2_score = AS.LS, AG2_rank = AS_rank),
-    by = "COUNTRY_ISO3"
-  ) %>%
-  left_join(
-    specific_contributions_3 %>% dplyr::select(COUNTRY_ISO3, AG3_score =AS.LS, AG3_rank = AS_rank),
-    by = "COUNTRY_ISO3"
-  ) %>%
-  left_join(
-    specific_contributions_4 %>% dplyr::select(COUNTRY_ISO3, AG4_score = AS.LS, AG4_rank = AS_rank),
-    by = "COUNTRY_ISO3"
-  ) %>%
-  left_join(
-    specific_contributions_5 %>% dplyr::select(COUNTRY_ISO3, AG5_score = AS.LS, AG5_rank = AS_rank),
-    by = "COUNTRY_ISO3"
-  ) 
+install.packages("purr")
+library(purr)
+
+columns_to_select <- c("COUNTRY_ISO3", "AS.LS", "AS_rank")
+age_specific_ranking_comparisons <- specific_contributions_list %>% 
+   Reduce(function(dtf1, dtf2) {
+    left_join(dtf1, dtf2 %>% dplyr::select(all_of(columns_to_select)), by = "COUNTRY_ISO3")
+  }, .) %>% 
+  dplyr::select(!WHR_score:age_group) %>% 
+  rename(
+    AG1_score = AS.LS.x,
+    AG1_rank = AS_rank.x,
+    AG2_score = AS.LS.y,
+    AG2_rank = AS_rank.y,
+    AG3_score = AS.LS.x.x,
+    AG3_rank = AS_rank.x.x,
+    AG4_score = AS.LS.y.y,
+    AG4_rank = AS_rank.y.y,
+    AG5_score = AS.LS,
+    AG5_rank = AS_rank
+  )
 
 ranking_comparisons <- left_join(ranking_comparisons, age_specific_ranking_comparisons, by = "COUNTRY_ISO3")
 
@@ -839,12 +844,12 @@ library(xtable)
 
 ranking_comparisons_table <- ranking_comparisons_summary %>%
   mutate("WHR" = paste(WHR_rank, " (", sprintf("%.3f", round(WHR_score, 3)), ")", sep = ""),
-         "Age-Standardized" = paste(AS_rank, " (", sprintf("%.3f", round(AS_score, 3)), ")", sep = ""),
-         "Age Group 1 (15-29)" = paste(AG1_rank, " (", sprintf("%.3f", round(AG1_score, 3)), ")", sep = ""),
-         "Age Group 2 (30-44)" = paste(AG2_rank, " (", sprintf("%.3f", round(AG2_score, 3)), ")", sep = ""),
-         "Age Group 3 (45-59)" = paste(AG3_rank, " (", sprintf("%.3f", round(AG3_score, 3)), ")", sep = ""),
-         "Age Group 4 (60-74)" = paste(AG4_rank, " (", sprintf("%.3f", round(AG4_score, 3)), ")", sep = ""),
-         "Age Group 5 (Over 74)" = paste(AG5_rank, " (", sprintf("%.3f", round(AG5_score, 3)), ")", sep = "")) %>% 
+         "Standardized" = paste(AS_rank, " (", sprintf("%.3f", round(AS_score, 3)), ")", sep = ""),
+         "15-29 Y.O." = paste(AG1_rank, " (", sprintf("%.3f", round(AG1_score, 3)), ")", sep = ""),
+         "30-44 Y.O." = paste(AG2_rank, " (", sprintf("%.3f", round(AG2_score, 3)), ")", sep = ""),
+         "45-59 Y.O." = paste(AG3_rank, " (", sprintf("%.3f", round(AG3_score, 3)), ")", sep = ""),
+         "60-74 Y.O." = paste(AG4_rank, " (", sprintf("%.3f", round(AG4_score, 3)), ")", sep = ""),
+         "Over 74 Y.O." = paste(AG5_rank, " (", sprintf("%.3f", round(AG5_score, 3)), ")", sep = "")) %>% 
   dplyr::select(Country = region, "WHR", "Standardized", "15-29 Y.O.",  "30-44 Y.O.", "45-59 Y.O.", "60-74 Y.O.", "Over 74 Y.O.")
 
 latex_table <- xtable(ranking_comparisons_table)
@@ -923,16 +928,14 @@ Researching Egypt and Iceland
 ```{r}
 # Egypt has decreasing WHR score but increasing AS score
 age_matrix <- gallup_main %>%
-  filter(!is.na(age_group),
-         !is.na(Weighted.LS)) %>% 
+  filter(!is.na(age_group)) %>% 
   group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
   arrange(YEAR_CALENDAR, age_group)
 
 age_n_matrix <- gallup_main %>%
-  filter(!is.na(age_group),
-         !is.na(Weighted.LS)) %>% 
+  filter(!is.na(age_group)) %>% 
   group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
   summarise(n = n()) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>%
