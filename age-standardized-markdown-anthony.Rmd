@@ -277,8 +277,9 @@ age_standardized_ranking <-  gallup_across_years %>%
   
 # Merge both rankings to compare, then compute differences in score and rank
 WHR_AS_comparison <- merge(WHR_summary, age_standardized_ranking, by="COUNTRY_ISO3", all=FALSE) %>%
-  mutate(rank_difference = WHR_rank - AS_rank,
-         score_difference = WHR_score - AS_score)
+  mutate(AS_rank = rank(-AS_score),
+         rank_difference =  AS_rank - WHR_rank,
+         score_difference = AS_score - WHR_score)
 ```
 
 ### Merging Data for Regression Analysis
@@ -382,16 +383,29 @@ calculate_specific_contributions <- function(age_group_data, regression_model) {
 specific_contributions_list <- list()
 specific_regression_data_list <- list()
 
+# Initialise list to contain data for regression
+Specific_regression_data_list <- list()
+
 # Iterate over age groups
 age_groups <- c("15-29", "30-44", "45-59", "60-74", "Over 74")
 
-for (group in age_groups) {
+for (i in seq_along(age_groups)) {
+  group <- age_groups[i]
+  
   age_specific_scores <- gallup_means %>% 
     filter(age_group == group) %>% 
     dplyr::select(COUNTRY_ISO3, year = YEAR_WAVE, AS.LS = WeightedMeanLS)
 
   # Merge with WHR_data_across_years, remove missing values for regression 
   Specific_regression_data <- merge(WHR_data_across_years, age_specific_scores, by=c("year","COUNTRY_ISO3")) 
+  
+  # Store the Specific_regression_data in the list
+  Specific_regression_data_list[[i]] <- Specific_regression_data
+  
+  # Create the data frame data_i for each age group
+  assign(paste0("data", i), Specific_regression_data %>%
+             dplyr::select(c(1, 5:10, 16)) %>%
+             mutate(age_group = i))
 
   # Perform regression
   Specific_regression <- feols(
@@ -447,50 +461,28 @@ sd(WHR_AS_comparison$AS_score)
 
 Plotting coefficients for contributions
 ```{r}
-# Initialise list to contain data for regression
-Specific_regression_data_list <- list()
-
-# Loop through each age group
-for (i in seq_along(age_groups)) {
-  group <- age_groups[i]
-  
-  # Loop to create Specific_regression_data
-  age_specific_scores <- gallup_means %>% 
-    filter(age_group == group) %>% 
-    dplyr::select(COUNTRY_ISO3, year = YEAR_WAVE, AS.LS = WeightedMeanLS)
-  
-  Specific_regression_data <- merge(WHR_data_across_years, age_specific_scores, by=c("year","COUNTRY_ISO3")) 
-  
-  # Store the Specific_regression_data in the list
-  Specific_regression_data_list[[i]] <- Specific_regression_data
-  
-  # Create the data frame data_i for each age group
-  assign(paste0("data", i), Specific_regression_data %>%
-             dplyr::select(c(1, 5:10, 16)) %>%
-             mutate(age_group = i))
-}
-
-big_regression_data <- bind_rows(data1, data2, data3, data4, data5)%>%
+# From loop, we have data1, ..., data5. Stack them to create across_age_regression_data
+across_age_regression_data <- bind_rows(data1, data2, data3, data4, data5)%>%
   mutate(age_group = as.factor(age_group))
 
-# Standardize columns 2:7 and add them to big_regression_data
-stanardized_big_regression_data <- big_regression_data %>%
+# Standardize columns 2:7 and add them to across_age_regression_data
+stanardized_across_age_regression_data <- across_age_regression_data %>%
   dplyr::select(2:7) %>%
   scale() %>%
   as.data.frame() %>%
   setNames(paste0("Standard.", colnames(.))) %>%
-  bind_cols(big_regression_data, .)
+  bind_cols(across_age_regression_data, .)
 
 # Fit model with all age groups
-big_model <- feols(
+across_age_model <- feols(
   AS.LS ~ age_group*Standard.Log.GDP.per.capita + age_group*Standard.Social.support + 
                age_group*Standard.Healthy.life.expectancy.at.birth + 
                age_group*Standard.Freedom.to.make.life.choices + age_group*Standard.Generosity +
                age_group*Standard.Perceptions.of.corruption | year, 
-  data = stanardized_big_regression_data)
+  data = stanardized_across_age_regression_data)
 
 # Create data frame for model summary
-big_model_summary <- summary(big_model)$coefficients %>%
+across_age_model_summary <- summary(across_age_model)$coefficients %>%
   as.data.frame() %>%
   slice(-(1:4)) %>%
   mutate(group = as.factor(c(1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 2, 3, 4, 5,
@@ -519,17 +511,17 @@ big_model_summary <- summary(big_model)$coefficients %>%
                        "Perceptions.of.corruption")) %>%
   rename(Estimate = ".", group = group) 
 
-a <- big_model_summary$Estimate[1:6]
-b <- as.numeric(a[1]) + as.numeric(big_model_summary$Estimate[7:10])
-c <- as.numeric(a[2]) + as.numeric(big_model_summary$Estimate[11:14])
-d <- as.numeric(a[3]) + as.numeric(big_model_summary$Estimate[15:18])
-e <- as.numeric(a[4]) + as.numeric(big_model_summary$Estimate[19:22])
-f <- as.numeric(a[5]) + as.numeric(big_model_summary$Estimate[23:26])
-g <- as.numeric(a[6]) + as.numeric(big_model_summary$Estimate[27:30])
+a <- across_age_model_summary$Estimate[1:6]
+b <- as.numeric(a[1]) + as.numeric(across_age_model_summary$Estimate[7:10])
+c <- as.numeric(a[2]) + as.numeric(across_age_model_summary$Estimate[11:14])
+d <- as.numeric(a[3]) + as.numeric(across_age_model_summary$Estimate[15:18])
+e <- as.numeric(a[4]) + as.numeric(across_age_model_summary$Estimate[19:22])
+f <- as.numeric(a[5]) + as.numeric(across_age_model_summary$Estimate[23:26])
+g <- as.numeric(a[6]) + as.numeric(across_age_model_summary$Estimate[27:30])
 values <- c(a, b, c, d, e, f, g)
-big_model_summary$values <- values
+across_age_model_summary$values <- values
 
-AS_coefficients_plot <- ggplot(big_model_summary, 
+AS_coefficients_plot <- ggplot(across_age_model_summary, 
                                aes(fill=variables, y=values, x=group)) + 
   geom_bar(position="stack", stat="identity")
 AS_coefficients_plot
@@ -704,13 +696,15 @@ world_map <- left_join(world_map, WHR_AS_comparison, by = "region")
 # Create a choropleth map with discrete bins
 ggplot(world_map, aes(x = long, y = lat, group = group, fill = bin)) +
   geom_polygon(color = "black", size = 0.1) +
-  scale_fill_manual(values = c("#67001F", "#B2182B", "#D6604D", "#F4A582", "#FDDBC7", "#D1E5F0", "#92C5DE", "#4393C3", "#2166AC", "#053061"), drop = FALSE) + 
+  scale_fill_manual(values = c("#67001F", "#B2182B", "#D6604D", "#F4A582", "#FDDBC7", "#D1E5F0", "#92C5DE", "#4393C3", "#2166AC", "#053061"), 
+                    drop = FALSE,
+                    guide = guide_legend(reverse = TRUE)) + 
   theme_minimal() +
   ggtitle("World Map for Score Difference from WHR to AS") +
   labs(
-    x = "Longitude",    # Change the x-axis label
-    y = "Latitude",     # Change the y-axis label
-    fill = "Score Difference"  # Change the legend title
+    x = "Longitude",  
+    y = "Latitude",   
+    fill = "Score Difference" 
   )
 
 ```
@@ -835,7 +829,31 @@ ranking_comparisons <- left_join(ranking_comparisons, age_specific_ranking_compa
 
 # Comparing ranks for top and bottom 10 in original WHR ranking
 ranking_comparisons_summary <- ranking_comparisons %>% 
-  filter(WHR_rank <= 10 | WHR_rank >= 128)
+  filter(WHR_rank <= 10 | WHR_rank >= 128) %>% 
+  arrange(WHR_rank)
+```
+
+Creating Table for Ranking Comparison
+```{r}
+library(xtable)
+
+ranking_comparisons_table <- ranking_comparisons_summary %>%
+  mutate("WHR" = paste(WHR_rank, " (", sprintf("%.3f", round(WHR_score, 3)), ")", sep = ""),
+         "Age-Standardized" = paste(AS_rank, " (", sprintf("%.3f", round(AS_score, 3)), ")", sep = ""),
+         "Age Group 1 (15-29)" = paste(AG1_rank, " (", sprintf("%.3f", round(AG1_score, 3)), ")", sep = ""),
+         "Age Group 2 (30-44)" = paste(AG2_rank, " (", sprintf("%.3f", round(AG2_score, 3)), ")", sep = ""),
+         "Age Group 3 (45-59)" = paste(AG3_rank, " (", sprintf("%.3f", round(AG3_score, 3)), ")", sep = ""),
+         "Age Group 4 (60-74)" = paste(AG4_rank, " (", sprintf("%.3f", round(AG4_score, 3)), ")", sep = ""),
+         "Age Group 5 (Over 74)" = paste(AG5_rank, " (", sprintf("%.3f", round(AG5_score, 3)), ")", sep = "")) %>% 
+  dplyr::select(Country = region, "WHR", "Standardized", "15-29 Y.O.",  "30-44 Y.O.", "45-59 Y.O.", "60-74 Y.O.", "Over 74 Y.O.")
+
+latex_table <- xtable(ranking_comparisons_table)
+
+# Print the LaTeX table
+print(latex_table, type = "latex")
+
+# Save the LaTeX table to a .tex file
+print(latex_table, type = "latex", file = "my_table.tex")
 ```
 
 Visualizing Ranking Changes
@@ -872,22 +890,33 @@ ranking_comparison_visualization_data  <- data.frame(ranking_comparison_wide %>%
 
 df_long <- reshape2::melt(ranking_comparison_visualization_data, id.vars = "WHR2")
 
-# Create graphpic, red is Guatemala and magenta is Serbia (two countries with biggest change in either direction)
+# Get the number of levels in your factor
+num_levels <- length(levels(factor(df_long$value)))
+
+# Create a vector of labels
+labels <- rep(c("Viridis", "Guatemala", "Serbia"), length.out = num_levels)
+
+# Use this vector in your scale_fill_manual() function
 ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   geom_tile() +
   scale_fill_manual(
     values = c(
       viridis(137, direction = -1)[1:42],
-      "#FF0000",
+      "black",
       viridis(137, direction = -1)[44],
-      "#FF00FF",
+      "white",
       viridis(137, direction = -1)[46:137]
-    )
-  ) +  # Adjust colors as needed
-  labs(title = "Ranking Comparison Visualization", x = "Ranking Type", y = "Ranking") +
+    ),
+    labels = labels
+  ) +  
+  labs(title = "Ranking Comparison", x = "Ranking Type", y = "Ranking") +
   theme_minimal() +
   scale_y_reverse() +
-  guides(fill = guide_colourbar(reverse = TRUE, title = "Ranking"))
+  guides(fill = guide_colourbar(reverse = TRUE, title = "Ranking")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+ggsave(file="ranking_color_comparison.pdf", width=3, height=8, dpi=300)
 ```
 
 Researching Egypt and Iceland
