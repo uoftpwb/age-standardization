@@ -6,7 +6,7 @@ date: "2023-10-27"
 
 The following code will run the neccesary analysis code  for the Age Standardization of Wellbeing project by Makoto Takahara, Anthony McCanny and Felix Cheung. 
 
-Running this file straight thorugh from beginning to end should succesfully complete all analysis. 
+Running this file straight thorugh from beginning to end should successfully complete all analysis. 
 
 The required file structure for running this code is a parent folder which includes three folders "Data", "Output" and "age-standardization", the latter of which will hold the code including the file you are currently reading. "Data" requires the files that are listed in the Data folder on the Sharepoint for internal users of this code, and the files in the Data file of the replication package for external users.
 
@@ -42,7 +42,7 @@ In order to accomplish this we need to backwards engineer the exact code require
 # Add COUNTRY_ISO3 for merging. Kosovo is added manually. 
 # Rename Life.Ladder to WHR_score.
 WHR_data_across_years <- read.csv("Data/WHR2023Table.csv") %>%  
-  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% 
+  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% # Somaliland region and Kosovo was not matched with the countrycode(). Countrycode for Kosovo is added manually, but Somaliland region is missing for 2020 to 2022, we ignore it here.
   rename(WHR_score = Life.Ladder)
   
 # Create a summary of life ladder and raw data for predictors, using weighted mean
@@ -233,7 +233,7 @@ standard_population <- c(0.3333784699, 0.2890995261, 0.2161137441, 0.1203791469,
 gallup_means <- gallup_main %>%
   group_by(COUNTRY_ISO3, YEAR_WAVE, age_group) %>%
   summarise(WeightedMeanLS = weighted.mean(WP16,WGT, na.rm=TRUE), n=n(), .groups = "drop") %>%
-  filter(!(age_group=="NA")) %>%
+  filter(!is.na(age_group)) %>%
   # Assign the standard population weights to the corresponding age groups.
   mutate(
     standard_population = case_when(
@@ -271,7 +271,7 @@ We compare our age-standardized methodology with the WHR methodology in terms of
 # Create ranking from the life satisfaction scores for the entire population for each country
 age_standardized_ranking <-  gallup_across_years %>% 
   filter(age_group == "allPopulation") %>% 
-  mutate(AS_score = as.numeric(WeightedMeanLS),
+  mutate(AS_score = WeightedMeanLS,
          AS_rank = rank(-AS_score)) %>% 
   dplyr::select(COUNTRY_ISO3, AS_score, AS_rank)
   
@@ -293,7 +293,7 @@ AS_data_across_years <- merge(WHR_data_across_years,
                               by.x = c("COUNTRY_ISO3", "year"), 
                               by.y = c("COUNTRY_ISO3", "YEAR_WAVE"), 
                               all = FALSE)  %>% 
-  dplyr::select(-13:-15) %>% 
+  dplyr::select(-n.x, -X, -X.1) %>% 
   rename(n = n.y)
 
 # Number of rows in WHR_data_across_years and AS_data_across_years is a bit different. I wonder why.
