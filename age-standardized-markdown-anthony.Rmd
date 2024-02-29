@@ -937,30 +937,30 @@ Researching Egypt and Iceland
 # Egypt has decreasing WHR score but increasing AS score
 age_matrix <- gallup_main %>%
   filter(!is.na(age_group)) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  group_by(COUNTRY_ISO3, YEAR_WAVE, age_group, .drop = FALSE) %>%
   summarise(WeightedMeanLS = weighted.mean(WP16, WGT, na.rm=T)) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>%
-  arrange(YEAR_CALENDAR, age_group)
+  arrange(YEAR_WAVE, age_group)
 
 age_n_matrix <- gallup_main %>%
   filter(!is.na(age_group)) %>% 
-  group_by(COUNTRY_ISO3, YEAR_CALENDAR, age_group, .drop = FALSE) %>%
+  group_by(COUNTRY_ISO3, YEAR_WAVE, age_group, .drop = FALSE) %>%
   summarise(n = n()) %>%
   pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>%
-  arrange(YEAR_CALENDAR, age_group)
+  arrange(YEAR_WAVE, age_group)
 
-egypt_n <- age_n_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "EGY") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+egypt_n <- age_n_matrix %>% dplyr::select("YEAR_WAVE", "age_group", "EGY") %>% 
+  filter((YEAR_WAVE <= 2012 & YEAR_WAVE >= 2010)|(YEAR_WAVE <= 2022 & YEAR_WAVE >= 2020))
 
-egypt <- age_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "EGY") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+egypt <- age_matrix %>% dplyr::select("YEAR_WAVE", "age_group", "EGY") %>% 
+  filter((YEAR_WAVE <= 2012 & YEAR_WAVE >= 2010)|(YEAR_WAVE <= 2022 & YEAR_WAVE >= 2020))
 
-egypt = merge(egypt, egypt_n, by=c("YEAR_CALENDAR", "age_group"))
+egypt = merge(egypt, egypt_n, by=c("YEAR_WAVE", "age_group"))
 
 egypt <- egypt %>%
   mutate(Year_Group = case_when(
-    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
-    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
+    between(YEAR_WAVE, 2010, 2012) ~ "2010-2012",
+    between(YEAR_WAVE, 2020, 2022) ~ "2020-2022"
   ))
 
 # Calculate the weighted average
@@ -979,18 +979,18 @@ ggplot(egypt, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
 
 ```{r}
 # Iceland has increasing WHR score but decreasing AS score
-iceland <- age_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "ISL") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+iceland <- age_matrix %>% dplyr::select("YEAR_WAVE", "age_group", "ISL") %>% 
+  filter((YEAR_WAVE <= 2012 & YEAR_WAVE >= 2010)|(YEAR_WAVE <= 2022 & YEAR_WAVE >= 2020))
 
-iceland_n <- age_n_matrix %>% dplyr::select("YEAR_CALENDAR", "age_group", "ISL") %>% 
-  filter((YEAR_CALENDAR <= 2012 & YEAR_CALENDAR >= 2010)|(YEAR_CALENDAR <= 2022 & YEAR_CALENDAR >= 2020))
+iceland_n <- age_n_matrix %>% dplyr::select("YEAR_WAVE", "age_group", "ISL") %>% 
+  filter((YEAR_WAVE <= 2012 & YEAR_WAVE >= 2010)|(YEAR_WAVE <= 2022 & YEAR_WAVE >= 2020))
 
-iceland = merge(iceland, iceland_n, by=c("YEAR_CALENDAR", "age_group"))
+iceland = merge(iceland, iceland_n, by=c("YEAR_WAVE", "age_group"))
 
 iceland <- iceland %>%
   mutate(Year_Group = case_when(
-    between(YEAR_CALENDAR, 2010, 2012) ~ "2010-2012",
-    between(YEAR_CALENDAR, 2020, 2022) ~ "2020-2022"
+    between(YEAR_WAVE, 2010, 2012) ~ "2010-2012",
+    between(YEAR_WAVE, 2020, 2022) ~ "2020-2022"
   ))
 
 # Calculate the weighted average
@@ -1006,9 +1006,42 @@ ggplot(iceland, aes(x = age_group, y = Avg_LS, fill = Year_Group)) +
   theme_minimal()
 ```
 
+Investigate components of age-standardized life satisfaction by finding life satisfaction for each country, age group
+```{r}
+life_satisfaction <- gallup_means %>%
+  filter(YEAR_WAVE %in% 2020:2022) %>%
+  group_by(COUNTRY_ISO3, age_group) %>%
+  summarise(WeightedMeanLS = weighted.mean(WeightedMeanLS, n, na.rm=T), .groups = "drop") %>% 
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = WeightedMeanLS) %>% 
+  filter(age_group != "allPopulation") %>%  
+  mutate(across(AFG:ZWE, ~ round(., 3)))
+
+prop_obs <- gallup_means %>%
+  filter(YEAR_WAVE %in% 2020:2022) %>%
+  group_by(COUNTRY_ISO3, age_group) %>%
+  summarise(n=sum(n), .groups = "drop") %>% 
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>% 
+  filter(age_group != "allPopulation") %>%  
+  mutate(across(AFG:ZWE, ~. / sum(.))) %>% 
+  mutate(across(AFG:ZWE, ~ round(., 3)))
+
+num_obs <- gallup_means %>%
+  filter(YEAR_WAVE %in% 2020:2022) %>%
+  group_by(COUNTRY_ISO3, age_group) %>%
+  summarise(n=sum(n), .groups = "drop") %>% 
+  pivot_wider(names_from = COUNTRY_ISO3, values_from = n) %>% 
+  filter(age_group != "allPopulation")
+
+standard_population_percentages <- round(prop.table(standard_population) * 100, 2)
+print(standard_population_percentages)
+```
+
+
 ```{r}
 # Write Standardized_contributions to csv
 #write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
+
+a <- specific_contributions_list[[1]]
 ```
 
 # APPENDIX - DELETED code
