@@ -1,19 +1,26 @@
 ---
 title: "GallupDataPreparation"
 author: "Kenith"
-date: '2023-11-01'
+date: '2024-02-29'
 ---
 
 ## 0. Subset the Gallup raw data
 
-The version of the Gallup raw data used in this study is "The_Gallup_021723.dat". This data was released to the [UofT Map and Data Library](https://mdl.library.utoronto.ca/collections/numeric-data/gallup) on February 14, 2023.
+The version of the Gallup raw data used in this study is "Gallup_World_Poll_122023.dta". This data was released to the [UofT Map and Data Library](https://mdl.library.utoronto.ca/collections/numeric-data/gallup) on January 23, 2024.
 
-Since the raw data file is relatively large (14Gb), we used a separate environment to run the following code, which subsets the variables that we needed.
+Since the raw data file is relatively large, we used a separate environment to run the following code, which subsets the variables that we needed.
 
-```{r gwp-subset, eval=FALSE}
-# This code will not be run
-# Import the data file "The_Gallup_021723.dat"
-gallupRaw <- rio::import("The_Gallup_021723.dat")
+```{r eval=FALSE}
+# The code in this chunk will not be run in the current Rmd
+# load "dplyr"
+library(dplyr)
+
+# Import the data file "Gallup_World_Poll_122023.dta"
+gallupRaw <- rio::import("Gallup_World_Poll_122023.dta")
+
+# Capitalize some variable names to align with the orginal codebook
+gallupSubset <- gallupRaw %>%
+    rename(WPID = wpid, WGT = wgt, COUNTRYNEW = countrynew)
 
 # Create a character vector of the names of the variables we're interested in
 varRequired <- c(
@@ -23,11 +30,11 @@ varRequired <- c(
 )
 
 # Subset gallupRaw to include only the variables specified in varRequired
-gallupSubset <- gallupRaw %>% 
+gallupSubset <- gallupSubset %>% 
     select(all_of(varRequired))
 
 # Save the gallupSubset data frame to a .rds file for later use
-saveRDS(gallupSubset, "(231101)GWP_RawSubset_ageStandardizedWellbeing.rds")
+saveRDS(gallupSubset, "GWP_RawSubset_ageStandardizedWellbeing_240229.rds")
 ```
 
 The environment used for the ABOVE code had the following specifications:
@@ -44,7 +51,7 @@ Base Packages: stats, graphics, grDevices, utils, datasets, methods, base
 
 Other Packages: dplyr_1.0.6
 
-Loaded via a namespace (and not attached): zip_2.2.0, Rcpp_1.0.6, cellranger_1.1.0, pillar_1.6.1, compiler_4.0.3, forcats_0.5.1, base64enc_0.1-3, tools_4.0.3, bit_4.0.4, digest_0.6.27, uuid_0.1-4, jsonlite_1.7.2, evaluate_0.14, lifecycle_1.0.0, tibble_3.1.2, pkgconfig_2.0.3, rlang_0.4.11, openxlsx_4.2.3, IRdisplay_1.0, IRkernel_1.2, curl_4.3.1, haven_2.4.1, rio_0.5.26, repr_1.1.3, generics_0.1.0, vctrs_0.3.8, hms_1.1.0, bit64_4.0.5, tidyselect_1.1.1, data.table_1.14.0, R6_2.5.0, fansi_0.5.0, readxl_1.3.1, foreign_0.8-80, pbdZMQ_0.3-5, purrr_0.3.4, magrittr_2.0.1, ellipsis_0.3.2, htmltools_0.5.1.1, utf8_1.2.1, stringi_1.6.2, crayon_1.4.1
+Loaded via a namespace (and not attached): zip_2.2.0, Rcpp_1.0.6, cellranger_1.1.0, pillar_1.6.1, compiler_4.0.3, forcats_0.5.1, base64enc_0.1-3, tools_4.0.3, digest_0.6.27, uuid_0.1-4, jsonlite_1.7.2, evaluate_0.14, lifecycle_1.0.0, tibble_3.1.2, pkgconfig_2.0.3, rlang_0.4.11, openxlsx_4.2.3, rstudioapi_0.13, cli_2.5.0, IRdisplay_1.0, IRkernel_1.2, curl_4.3.1, haven_2.4.1, rio_0.5.26, repr_1.1.3, generics_0.1.0, vctrs_0.3.8, hms_1.1.0, tidyselect_1.1.1, data.table_1.14.0, R6_2.5.0, fansi_0.5.0, readxl_1.3.1, foreign_0.8-80, pbdZMQ_0.3-5, readr_1.4.0, purrr_0.3.4, magrittr_2.0.1, ellipsis_0.3.2, htmltools_0.5.1.1, utf8_1.2.1, stringi_1.6.2, crayon_1.4.1
 
 ## 1. Clean the Subset Gallup Data
 
@@ -57,7 +64,7 @@ Once we had the subset of the Gallup data, we imported the data and loaded the n
 library(dplyr)
 
 # Read the RDS file
-gallupSubset <- readRDS("(231101)GWP_RawSubset_ageStandardizedWellbeing.rds")
+gallupSubset <- readRDS("GWP_RawSubset_ageStandardizedWellbeing_240229.rds")
 ```
 
 ### 1.2 Create `YEAR_INTERVIEW` 
@@ -91,5 +98,5 @@ The object `gallup` is now a cleaned subset of the Gallup data.
 We save the Gallup cleaned data to a .rds file for later use
 
 ```{r exporting-gallup-cleaned}
-saveRDS(gallup, "(231101)GWP_cleaned_ageStandardizedWellbeing.rds")
+saveRDS(gallup, "GWP_cleaned_ageStandardizedWellbeing_240229.rds")
 ```
