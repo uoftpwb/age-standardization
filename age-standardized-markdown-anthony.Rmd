@@ -41,7 +41,7 @@ In order to accomplish this we need to backwards engineer the exact code require
 # Set working directory to the parent directory of the current directory this file is in, then load the World Happiness Report data from the CSV file. 
 # Add COUNTRY_ISO3 for merging. Kosovo is added manually. 
 # Rename Life.Ladder to WHR_score.
-# "Data/WHR2023Table.csv" is data obtained directly from the World Happiness Report Appendices & Data. n is a column added manually from the Statistical Appendix 1 for Chapter 2.
+# "Data/WHR2023Table.csv" is data obtained directly from the World Happiness Report Appendices & Data [TODO: Name of the file, and exactly where to find it.] [Split the n column into its own file]. n is a column added manually from the Statistical Appendix 1 for Chapter 2.
 WHR_data_across_years <- read.csv("Data/WHR2023Table.csv") %>%  
   mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% # Somaliland region and Kosovo was not matched with the countrycode(). Countrycode for Kosovo is added manually, but Somaliland region is missing for 2020 to 2022, we ignore it here.
   rename(WHR_score = Life.Ladder)
@@ -126,6 +126,8 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
     Perceptions.of.corruption = max(.$Perceptions.of.corruption, na.rm = TRUE)
   ) %>% 
   mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% 
+
+# TODO: Add explanation of methodology for imputation. Explain exactly where the data is missing.
 # Impute values for Palestine because data is missing from WHR Data, using backward engineering.
 # "0.292" comes from Palestine's "Explained by Healthy life expectancy" value in Figure 2.1 from WHR Chapter 2.
 # Similarly, "1.164" comes from Palestine's "Explained by Dystopia + residual" value. 
@@ -153,7 +155,6 @@ merged_data <- WHR_summary %>%
 # We calculate the difference between the WHR reported and the calculated values for each determinant of wellbeing
 # We then summarize these differences, calculating the mean and max difference, and the country with the max difference for each determinant
 comparison <- merged_data %>% 
-  drop_na() %>%
   mutate(Difference.Life.Ladder = WHR_score_Replicated - WHR_score_WHR,
          Difference.Log.GDP.per.capita = Log.GDP.per.capita_Replicated - Log.GDP.per.capita_WHR,
          Difference.Social.support = Social.support_Replicated - Social.support_WHR,
@@ -167,7 +168,7 @@ comparison <- merged_data %>%
          Difference.Freedom.to.make.life.choices.cont = Freedom.to.make.life.choices.cont_Replicated - Freedom.to.make.life.choices.cont_WHR,
          Difference.Generosity.cont = Generosity.cont_Replicated - Generosity.cont_WHR,
          Difference.Perceptions.of.corruption.cont = Perceptions.of.corruption.cont_Replicated - Perceptions.of.corruption.cont_WHR) %>%
-  summarise(across(starts_with("Difference."), list(mean = ~mean(abs(.x)), max = ~max(abs(.x)), country_with_max_diff = ~Country.name[which.max(abs(.x))])))
+  summarise(across(starts_with("Difference."), list(mean = ~mean(abs(.x), na.rm=TRUE), max = ~max(abs(.x), na.rm=TRUE), country_with_max_diff = ~Country.name[which.max(abs(.x))])))
 
 # We then format this data for presentation, pivoting the data to a long format, separating the variable names into separate columns, and then pivoting back to a wide format
 # We then create a table with the data, adding styling for better readability
