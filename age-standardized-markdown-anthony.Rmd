@@ -45,7 +45,6 @@ In order to accomplish this we need to backwards engineer the exact code require
 # "Data/WHR2023Table.csv" is data obtained directly from the World Happiness Report Appendices & Data (https://worldhappiness.report/ed/2023/#appendices-and-data) as "Data for Table 2.1".
 # We also add a column n, representing the number of observations in each country-year, with data copied manually from the Statistical Appendix 1 for Chapter 2.
 WHR_data_table <- read_excel("Data/DataForTable2.1WHR2023.xls") %>%  
-  mutate(COUNTRY_ISO3 = ifelse("Country name" == "Kosovo", "XKX", countrycode("Country name", 'country.name', 'iso3c'))) %>% # Somaliland region and Kosovo was not matched with the countrycode(). Countrycode for Kosovo is added manually, but Somaliland region is missing for 2020 to 2022, we ignore it here.
   rename(WHR_score = "Life Ladder",
          Country.name = "Country name",
          Log.GDP.per.capita = "Log GDP per capita",
@@ -56,7 +55,8 @@ WHR_data_table <- read_excel("Data/DataForTable2.1WHR2023.xls") %>%
 
 WHR_data_n <- read.csv("Data/WHR2023Table_n.csv") 
 
-WHR_data_across_years <- merge(WHR_data_table, WHR_data_n, by = c("Country.name", "year"), all.x = TRUE)
+WHR_data_across_years <- merge(WHR_data_table, WHR_data_n, by = c("Country.name", "year"), all.x = TRUE) %>%
+  mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) # Somaliland region and Kosovo was not matched with the countrycode(). Countrycode for Kosovo is added manually, but Somaliland region is missing for 2020 to 2022, we ignore it here.
   
 # Create a summary of life ladder and raw data for predictors, using weighted mean
 # Filter the data for the years 2020 to 2022, group the data by country name, and calculate the weighted mean for each predictor, removing NA values
@@ -139,9 +139,10 @@ WHR_data_fig <- readxl::read_excel("Data/DataForFigure2.1WHR2023.xls")%>%
   ) %>% 
   mutate(COUNTRY_ISO3 = ifelse(Country.name == "Kosovo", "XKX", countrycode(Country.name, 'country.name', 'iso3c'))) %>% 
 
+# TODO DATA FOR PALESTINE IS MISSING
 # Impute values for Palestine because data is missing from WHR Data, using backward engineering.
 # The contribution of a predictor for a country is computed by multiplying the coefficient of the predictor in the regression by the difference in the raw value of that predictor for that particular country and the lowest value in our data. Thus, backward engineering is the opposite of this procedure. 
-# For example, "0.292" comes from Palestine's "Explained by Healthy life expectancy" value in Figure 2.1 from WHR Chapter 2. We divide this value by the coefficient of healthy life expectany in our regression, then add the minimum value of healthy life expectancy out of all of our countries. This allows us to backwards engineer a "raw" value for Palestine's healthy life expectancy. 
+# For example, "0.292" comes from Palestine's "Explained by Healthy life expectancy" value in Figure 2.1 from WHR Chapter 2. We divide this value by the coefficient of healthy life expectancy in our regression, then add the minimum value of healthy life expectancy out of all of our countries. This allows us to backwards engineer a value for Palestine's healthy life expectancy used by the authors of the WHR. 
 # Similarly, "1.164" comes from Palestine's "Explained by Dystopia + residual" value. 
   mutate(
     Healthy.life.expectancy.at.birth = ifelse(Country.name == "State of Palestine", 0.292 / coef(WHR_regression)["Healthy.life.expectancy.at.birth"] + min(.$Healthy.life.expectancy.at.birth, na.rm = TRUE), Healthy.life.expectancy.at.birth),
@@ -248,7 +249,7 @@ standard_population <- c(24.62, 21.35, 15.96, 8.89, 3.06)
 
 # The World Happiness Report is replicated best by using YEAR_CALENDAR to represent years. However, we use YEAR_WAVE.
 # YEAR_CALENDAR refers to the calendar year in which the data collection occurred. 
-# YEAR_WAVE refers to the year of the wave of data collection. Occasionally, these two variables do not match because some data collection waves are completed fully within the calendar year. 
+# YEAR_WAVE refers to the year of the wave of data collection. Occasionally, these two variables do not match because some data collection waves are not completed fully within the calendar year. 
 # Our justification for using YEAR_WAVE comes from the analytical challenges that potentially stem from categorizing by YEAR_CALENDAR, caused by factors such as changes in survey methods or the fact that the sample weights of Gallup data is based on YEAR_WAVE.
 gallup_means <- gallup_main %>%
   group_by(COUNTRY_ISO3, YEAR_WAVE, age_group) %>%
@@ -549,7 +550,7 @@ AS_coefficients_plot
 
 Hypothesis Tests to compare coefficients for each predictor between each age group
 
-Joint hypothesis tests involve testing multiple hypotheses simultaneously to determine whether they are collectively supported by the data. We use the "across_age_model", which combines regressions for all age groups, to test the hypotheses that a predictor has a statistically significant difference in their relationship to life satisfaction when we compare different age groups. 
+Joint hypothesis tests allows for us to test different hypotheses about our coefficients, rather than the default hypothesis that one individual coefficient is equal to 0. We use the "across_age_model", which is a regression using data from all age groups, to test the hypotheses that a predictor has a statistically significant difference in their relationship to life satisfaction when we compare different age groups. 
 ```{r}
 # Joint hypothesis test for all predictors, comparing age groups 1-2, 2-3, 3-4, 4-5, and 1-5
 joint_hypo_12 <- glht(across_age_model, linfct = c("age_group2:Standard.Log.GDP.per.capita +
@@ -1053,12 +1054,95 @@ standard_population_percentages <- round(prop.table(standard_population) * 100, 
 print(standard_population_percentages)
 ```
 
+Analyzing General Trends
+```{r}
+# Change life_satisfaction to only include countries in WHR
+iso3_values <- unique(WHR_AS_comparison$COUNTRY_ISO3)
+subset_life_satisfaction <- life_satisfaction[, iso3_values]
+
+# Unidirectional change for age groups 1-5
+is_increasing <- function(x) {
+  all(diff(x) > 0)
+}
+
+# Function to check if a vector is strictly decreasing
+is_decreasing <- function(x) {
+  all(diff(x) < 0)
+}
+
+increasing_cols1 <- character(0)
+decreasing_cols1 <- character(0)
+
+# Loop through each column except "age_group"
+for (col_name in colnames(subset_life_satisfaction)) {
+  if (is_increasing(subset_life_satisfaction[[col_name]])) {
+      increasing_cols1 <- c(increasing_cols1, col_name)
+    }
+  if (is_decreasing(subset_life_satisfaction[[col_name]])) {
+      decreasing_cols1 <- c(decreasing_cols1, col_name)
+  }
+}
+
+cat("Columns strictly increasing from age groups 1-5:", length(increasing_cols1)/length(iso3_values)*100, "\n")
+cat("Columns strictly decreasing from age groups 1-5:", length(decreasing_cols1)/length(iso3_values)*100, "\n")
+
+
+# Unidirectional change for age groups 1-4
+subset_df <- subset_life_satisfaction[1:4, ]
+
+increasing_cols2 <- character(0)
+decreasing_cols2 <- character(0)
+
+# Loop through each column except "age_group"
+for (col_name in colnames(subset_df)) {
+  if (col_name != "age_group") {
+    # Check if the column is strictly increasing
+    if (is_increasing(subset_df[[col_name]])) {
+      increasing_cols2 <- c(increasing_cols2, col_name)
+    }
+    # Check if the column is strictly decreasing
+    if (is_decreasing(subset_df[[col_name]])) {
+      decreasing_cols2 <- c(decreasing_cols2, col_name)
+    }
+  }
+}
+
+cat("Columns strictly increasing from age groups 1-4:", length(increasing_cols2)/length(iso3_values)*100, "\n")
+cat("Columns strictly decreasing from age groups 1-4:", length(decreasing_cols2)/length(iso3_values)*100, "\n")
+
+
+# Change from age group 1 to age group 5
+difference <- subset_life_satisfaction[5, ] - subset_life_satisfaction[1, ]
+difference_vector <- as.vector(difference)
+positive_count <- sum(difference_vector > 0, na.rm = TRUE)
+negative_count <- sum(difference_vector < 0, na.rm = TRUE)
+
+cat("Proportion of increases from age group 1 to 5", ":", positive_count/length(iso3_values)*100, "\n")
+cat("Proportion of decreases from age group 1 to 5", ":", negative_count/length(iso3_values)*100, "\n")
+
+
+# Change from age group 1 to age group 4
+difference2 <- subset_life_satisfaction[4, ] - subset_life_satisfaction[1, ]
+difference_vector2 <- as.vector(difference2)
+positive_count2 <- sum(difference_vector2 > 0, na.rm = TRUE)
+negative_count2 <- sum(difference_vector2 < 0, na.rm = TRUE)
+
+cat("Proportion of increases from age group 1 to 5", ":", positive_count2/length(iso3_values)*100, "\n")
+cat("Proportion of decreases from age group 1 to 5", ":", negative_count2/length(iso3_values)*100, "\n")
+```
+
+
+Summarizing Main Statistics
+```{r}
+average_rank_diff <- mean(abs(WHR_AS_comparison$rank_difference))
+average_score_diff <- mean(abs(WHR_AS_comparison$score_difference))
+count_rank_diff_geq_5 <- sum(abs(WHR_AS_comparison$rank_difference) >= 5)
+```
+
 
 ```{r}
 # Write Standardized_contributions to csv
 #write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
-
-a <- specific_contributions_list[[1]]
 ```
 
 # APPENDIX - DELETED code
