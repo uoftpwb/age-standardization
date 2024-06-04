@@ -544,8 +544,47 @@ across_age_model_summary$values <- values
 
 AS_coefficients_plot <- ggplot(across_age_model_summary, 
                                aes(fill=variables, y=values, x=group)) + 
-  geom_bar(position="stack", stat="identity")
+  geom_bar(position="stack", stat="identity") +
+  theme_bw() +
+  scale_x_discrete(labels = c("15-29", "30-44", "45-59", "60-74", "Over 74")) +
+  scale_fill_discrete(labels = c("Log GDP per capita", "Social support", 
+                                 "Healthy life expectancy at birth", 
+                                 "Freedom to make life choices",
+                                 "Generosity", "Perceptions of corruption")) +
+  labs(fill = "Variables",
+       x = "Age Group", 
+       y = "Standardized Contribution to Life Satisfaction",  
+       title = "Determinants of Age-Specific Life Satisfaction") 
+
+
+AS_coefficients_plot <- ggplot(across_age_model_summary, 
+                               aes(fill = variables, y = values, x = group)) + 
+  geom_bar(position = "stack", stat = "identity") +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),  # Remove major gridlines
+    panel.grid.minor = element_blank(),  # Remove minor gridlines
+    panel.border = element_blank(),      # Remove plot border
+    panel.background = element_blank()   # Remove plot background
+  ) +
+  scale_x_discrete(labels = c("15-29", "30-44", "45-59", "60-74", "Over 74")) +
+  scale_fill_discrete(labels = c(
+    "Log GDP per capita", "Social support", 
+    "Healthy life expectancy at birth", 
+    "Freedom to make life choices",
+    "Generosity", "Perceptions of corruption"
+  )) +
+  labs(
+    fill = "Variables",
+    x = "Age Group", 
+    y = "Standardized Coefficients",  
+    title = "Determinants of Age-Specific Life Satisfaction"
+  )
 AS_coefficients_plot
+
+ggsave("AS_coefficients_plot.png", plot = AS_coefficients_plot, width = 8, height = 6, units = "in", dpi = 300)
+ggsave("AS_coefficients_plot.jpg", plot = AS_coefficients_plot, width = 8, height = 6, units = "in", dpi = 300)
+ggsave("AS_coefficients_plot.svg", plot = AS_coefficients_plot, width = 8, height = 6)
 ```
 
 Hypothesis Tests to compare coefficients for each predictor between each age group
@@ -724,18 +763,40 @@ world_map <- map_data("world") %>% filter(!(region%in%c("French Southern and Ant
 world_map <- left_join(world_map, WHR_AS_comparison, by = "region")
 
 # Create a choropleth map with discrete bins
-ggplot(world_map, aes(x = long, y = lat, group = group, fill = bin)) +
+world_map_plot <- ggplot(world_map_plot, aes(x = long, y = lat, group = group, fill = bin_plot)) +
   geom_polygon(color = "black", size = 0.1) +
-  scale_fill_manual(values = c("#67001F", "#B2182B", "#D6604D", "#F4A582", "#FDDBC7", "#D1E5F0", "#92C5DE", "#4393C3", "#2166AC", "#053061"), 
-                    drop = FALSE,
-                    guide = guide_legend(reverse = TRUE)) + 
+  scale_fill_manual(values = c(
+    "#67001F", "#B2182B", "#D6604D", "#F4A582", "#FDDBC7",
+    "#D1E5F0", "#92C5DE", "#4393C3", "#2166AC", "#053061", "grey50"
+  ),
+  drop = FALSE,
+  guide = guide_legend(reverse = TRUE)) +
+  coord_map(xlim = c(-180, 180)) +
   theme_minimal() +
-  ggtitle("World Map for Score Difference from WHR to AS") +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.margin = margin(t = 40, r = 20, b = 20, l = 20)
+  ) +  # Adjust the top margin
+  ggtitle("Differences between Simple and Age-standardized Averages of Life Satisfaction") +
   labs(
-    x = "Longitude",  
-    y = "Latitude",   
-    fill = "Score Difference" 
+    x = "",
+    y = "",
+    fill = "Difference"
+  ) +
+  guides(
+    fill = guide_legend(
+      override.aes = list(
+        colour = "black"
+      ),
+      title = "Difference"
+    )
   )
+
+ggsave("world_map_plot.png", plot = world_map_plot, width = 10, height = 7, bg = "white")
+ggsave("world_map_plot.jpg", plot = world_map_plot, width = 10, height = 7, bg = "white")
+ggsave("world_map_plot.svg", plot = world_map_plot, width = 10, height = 7)
 
 ```
 
@@ -889,11 +950,13 @@ print(latex_table, type = "latex", file = "my_table.tex")
 Visualizing Ranking Changes
 ```{r}
 ranking_comparison_wide <- ranking_comparisons %>% 
-  dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG4_rank)
+  dplyr::select(COUNTRY_ISO3, COUNTRYNAME = region, WHR_rank, AS_rank, AG1_rank, AG2_rank, AG3_rank, AG4_rank)
 ranking_comparison_wide <- ranking_comparison_wide[order(ranking_comparison_wide$WHR_rank), ]
 
 WHR_and_AS <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AS_rank')
 WHR_and_AG1 <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AG1_rank')
+WHR_and_AG2 <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AG2_rank')
+WHR_and_AG3 <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AG3_rank')
 WHR_and_AG4 <- ranking_comparison_wide %>% dplyr::select('WHR_rank', 'AG4_rank')
 
 WHR_and_AS <- WHR_and_AS %>%
@@ -904,6 +967,14 @@ WHR_and_AG1 <- WHR_and_AG1 %>%
   arrange(`AG1_rank`)
 WHR_and_AG1$AG1_rank <- WHR_and_AG1$WHR
 
+WHR_and_AG2 <- WHR_and_AG2 %>%
+  arrange(`AG2_rank`)
+WHR_and_AG2$AG2_rank <- WHR_and_AG2$WHR
+
+WHR_and_AG3 <- WHR_and_AG3 %>%
+  arrange(`AG3_rank`)
+WHR_and_AG3$AG3_rank <- WHR_and_AG3$WHR
+
 WHR_and_AG4 <- WHR_and_AG4 %>%
   arrange(`AG4_rank`)
 WHR_and_AG4$AG4_rank <- WHR_and_AG4$WHR
@@ -912,23 +983,25 @@ WHR_and_AG4$AG4_rank <- WHR_and_AG4$WHR
 ranking_comparison_visualization_data  <- data.frame(ranking_comparison_wide %>% dplyr::select(WHR_rank),
                                                       WHR_and_AS %>% dplyr::select(AS_rank),
                                                       WHR_and_AG1 %>% dplyr::select(AG1_rank),
+                                                      WHR_and_AG2 %>% dplyr::select(AG2_rank),
+                                                      WHR_and_AG3 %>% dplyr::select(AG3_rank),
                                                       WHR_and_AG4 %>% dplyr::select(AG4_rank),
                                                      ranking_comparison_wide %>% dplyr::select(WHR_rank)) %>% 
-  dplyr::select("WHR" = WHR_rank, "Age-Standardized" = AS_rank, "Age Group 1" = AG1_rank, 
-         "Age Group 4" = AG4_rank, "WHR2" = WHR_rank.1)
+  dplyr::select("WHR" = WHR_rank, "Age-Standardized" = AS_rank, "Age Group 1" = AG1_rank, "Age Group 2" = AG2_rank, 
+         "Age Group 3" = AG3_rank, "Age Group 4" = AG4_rank, "WHR2" = WHR_rank.1)
 
 
 df_long <- reshape2::melt(ranking_comparison_visualization_data, id.vars = "WHR2")
 
-# Get the number of levels in your factor
+# Get the number of levels in factor
 num_levels <- length(levels(factor(df_long$value)))
 
 # Create a vector of labels
 labels <- rep(c("Viridis", "Guatemala", "Serbia"), length.out = num_levels)
 
-# Use this vector in your scale_fill_manual() function
+# Use this vector in scale_fill_manual() function
 # Black is Guatemala, White is Serbia
-ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
+ranking_comparison_plot <- ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
   geom_tile() +
   scale_fill_manual(
     values = c(
@@ -940,15 +1013,43 @@ ggplot(df_long, aes(x = variable, y = WHR2, fill = factor(value))) +
     ),
     labels = labels
   ) +  
-  labs(title = "Ranking Comparison", x = "Ranking Type", y = "Ranking") +
+  labs(title = "Comparing Rankings of \nSimple, Age-Standardized, \nand Age-Specific Averages", x = "Ranking Type", y = "Ranking") +
   theme_minimal() +
-  scale_y_reverse() +
+  scale_y_reverse(breaks = c(1, 50, 100)) + 
+  scale_x_discrete(labels = c("Simple Average", "Age-standardized", "Age Specific: 15-29", "Age Specific: 30-44",
+                              "Age Specific: 45-59", "Age Specific: 60-74")) + 
   guides(fill = guide_colourbar(reverse = TRUE, title = "Ranking")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(axis.text.x = element_text(angle = 70, hjust = 1),
+        panel.grid = element_blank())  
 
+ggsave("ranking_comparison_plot.png", plot = ranking_comparison_plot, width = 5, height = 10, bg = "white")
+ggsave("ranking_comparison_plot.jpg", plot = ranking_comparison_plot, width = 5, height = 10, bg = "white")
+ggsave("ranking_comparison_plot.svg", plot = ranking_comparison_plot, width = 5, height = 10, bg = "white")
 
-ggsave(file="ranking_color_comparison.pdf", width=3, height=8, dpi=300)
+ranking_comparison_plot
 ```
+
+
+```{r}
+legend_data <- data.frame(
+  country = factor(c("Guatemala", "Serbia")),
+  value = c("1", "2")
+)
+
+# Create the legend plot
+legend_plot <- ggplot(legend_data, aes(x = country, y = value, fill = country)) +
+  geom_tile() +
+  scale_fill_manual(values = c("Guatemala" = "black", "Serbia" = "white")) +
+  theme_void() +
+  labs(fill = "Legend") +
+  theme(legend.position = "left",
+        plot.background = element_rect(fill = "white"),
+        legend.margin = margin(20, 20, 20, 20))
+
+# Print the legend plot
+print(legend_plot)
+```
+
 
 Researching Egypt and Iceland
 ```{r}
@@ -1131,6 +1232,46 @@ cat("Proportion of increases from age group 1 to 5", ":", positive_count2/length
 cat("Proportion of decreases from age group 1 to 5", ":", negative_count2/length(iso3_values)*100, "\n")
 ```
 
+Find example where higher well-being at each age group is disguised by different age demographics. 
+```{r}
+subset_life_satisfaction <- subset_life_satisfaction[, -1]
+rownames(subset_life_satisfaction) <- c("15-29", "30-44", "45-59", "60-74", "Over 74")
+
+find_intersection <- function(input_country, life_satisfaction_data, whr_comparison_data) {
+  # Function to compare countries in life satisfaction data
+  compare_countries_all_groups <- function(input_country, data) {
+    input_col <- which(colnames(data) == input_country)
+    input_values <- data[, input_col]
+    higher_countries <- character(0)
+    for (i in 1:ncol(data)) {
+      if (i == input_col)
+        next
+      if (all(data[, i] > input_values, na.rm = TRUE)) {
+        higher_countries <- c(higher_countries, colnames(data)[i])
+      }
+    }
+    return(higher_countries)
+  }
+  
+  # Find countries higher in all age groups
+  higher_in_all_groups <- compare_countries_all_groups(input_country, life_satisfaction_data)
+  
+  # Find rank of input country in WHR data
+  rank <- whr_comparison_data[whr_comparison_data$COUNTRY_ISO3 == input_country, "WHR_rank"]
+  
+  # Find countries lower in WHR rank
+  lower_in_WHR <- whr_comparison_data %>%
+    filter(WHR_rank > rank) %>%
+    dplyr::select(COUNTRY_ISO3)
+  
+  # Find intersection
+  intersection_result <- intersect(higher_in_all_groups, lower_in_WHR$COUNTRY_ISO3)
+  
+  return(intersection_result)
+}
+
+find_intersection("BFA", subset_life_satisfaction, WHR_AS_comparison)
+```
 
 Summarizing Main Statistics
 ```{r}
@@ -1139,7 +1280,7 @@ average_score_diff <- mean(abs(WHR_AS_comparison$score_difference))
 count_rank_diff_geq_5 <- sum(abs(WHR_AS_comparison$rank_difference) >= 5)
 ```
 
-
+Writing files from data frames
 ```{r}
 # Write Standardized_contributions to csv
 #write.csv(Standardized_contributions, file = "/Users/makototakahara/Downloads/Standardized_contributions.csv", row.names = FALSE)
